@@ -1,5 +1,5 @@
 # README
 
-Last thing done: Setup GraphQL and its types
+Last thing done: Finished Login mutation
 
-next step: 57:26 at video.
+next step: persist user session, video at 1:41:28
