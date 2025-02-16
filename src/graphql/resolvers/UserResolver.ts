@@ -38,6 +38,25 @@ class LoginInput {
   password: string;
 }
 
+// Reset password input type
+@InputType()
+class ResetPasswordInput {
+  @Field()
+  newPassword: string;
+  @Field()
+  token: string;
+  @Field()
+  email: string;
+}
+
+@InputType()
+class CheckTokenInput {
+  @Field()
+  token: string;
+  @Field()
+  email: string;
+}
+
 // Error Type
 @ObjectType()
 class FieldError {
@@ -365,7 +384,7 @@ export class UserResolver {
       await sendEmail({
         to: email,
         subject: "Password Reset",
-        text: `Your reset token: ${resetToken}`,
+        text: `Visit this link to reset your password: ${env.CORS_ORIGIN}/forgot-password/${resetToken}`,
       });
       return {
         success: true,
@@ -378,15 +397,53 @@ export class UserResolver {
     }
   }
 
+  // Check if token exists
+  @Mutation(() => ConfirmResponse)
+  async checkToken(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: CheckTokenInput
+  ): Promise<ConfirmResponse> {
+    try {
+      // Destructure input
+      const { email, token } = options;
+      // Get stored token from redis
+      const storedToken = await ctx.redis.get(`resetToken:${email}`);
+      if (!storedToken || storedToken !== token) {
+        return {
+          success: false,
+          errors: [
+            {
+              field: "token",
+              message: "Invalid or expired token.",
+            },
+          ],
+        };
+      }
+      return {
+        success: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        errors: [
+          {
+            field: "root",
+            message: error.message,
+          },
+        ],
+      };
+    }
+  }
+
   // Reset password
   @Mutation(() => ConfirmResponse)
   async resetPassword(
     @Ctx() ctx: MyContext,
-    @Arg("email") email: string,
-    @Arg("token") token: string,
-    @Arg("newPassword") newPassword: string
+    @Arg("options") options: ResetPasswordInput
   ): Promise<ConfirmResponse> {
     try {
+      // Destructure input
+      const { email, newPassword, token } = options;
       // Get stored token from redis
       const storedToken = await ctx.redis.get(`resetToken:${email}`);
       if (!storedToken || storedToken !== token) {
