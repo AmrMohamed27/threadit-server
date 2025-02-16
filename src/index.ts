@@ -8,7 +8,7 @@ import http from "http";
 import { createSchema } from "./graphql/schema";
 import session from "express-session";
 import "reflect-metadata";
-import { redisStore } from "./redis";
+import { redisClient, redisStore } from "./redis";
 import { __prod__, env } from "./env";
 import { db } from "./database/db";
 import { MyContext } from "./graphql/types";
@@ -31,7 +31,7 @@ export async function startServer() {
   // Apply Apollo Middleware
   app.use(
     "/graphql",
-    cors(), // Enable CORS
+    cors({ origin: env.CORS_ORIGIN, credentials: true }), // Enable CORS
     json(), // Parse JSON bodies
     // Redis session middleware
     session({
@@ -41,15 +41,20 @@ export async function startServer() {
       saveUninitialized: false, // only save session when data exists
       secret: env.REDIS_SECRET,
       cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
+        maxAge: 1000 * 60 * 60 * 24, // 10 years
         httpOnly: true,
         secure: __prod__,
-        sameSite: "lax",
+        sameSite: false,
       },
     }),
     // Apollo Middleware
     expressMiddleware(server, {
-      context: async ({ req, res }): Promise<MyContext> => ({ req, res, db }),
+      context: async ({ req, res }): Promise<MyContext> => ({
+        req,
+        res,
+        db,
+        redis: redisClient,
+      }),
     })
   );
 

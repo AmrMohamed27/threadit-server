@@ -8,12 +8,15 @@ import {
   Query,
   Resolver,
 } from "type-graphql";
-import { returnedUserWithoutPassword, users } from "../../database/schema";
+import { returnedUser, users } from "../../database/schema";
 import { User } from "../types/User";
 import argon2 from "argon2";
 import { eq } from "drizzle-orm";
 import { MyContext } from "../types";
 import { env } from "../../env";
+import { v4 as uuidv4 } from "uuid";
+import { sendEmail } from "../../email/emailService";
+import { checkMXRecords } from "../../email/checkMXRecords";
 
 // Register input type
 @InputType()
@@ -48,13 +51,21 @@ class FieldError {
 @ObjectType()
 class UserResponse {
   @Field(() => User, { nullable: true })
-  user?: returnedUserWithoutPassword;
+  user?: returnedUser;
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
+}
+
+@ObjectType()
+class ConfirmResponse {
+  @Field(() => Boolean)
+  success: boolean;
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }
 
 // Function to handle register errors
-function registerErrorhandler(error: any): UserResponse {
+function registerErrorHandler(error: any): UserResponse {
   // Duplicate email error
   if (error.constraint === "users_email_unique") {
     return {
@@ -71,7 +82,7 @@ function registerErrorhandler(error: any): UserResponse {
     return {
       errors: [
         {
-          field: "username",
+          field: "name",
           message: "A user with this username already exists",
         },
       ],
@@ -81,7 +92,7 @@ function registerErrorhandler(error: any): UserResponse {
   return {
     errors: [
       {
-        field: "register",
+        field: "root",
         message: error.message,
       },
     ],
@@ -98,6 +109,18 @@ export class UserResolver {
   ): Promise<UserResponse> {
     // Destructure email, password, and name from userData
     const { email, password, name } = userData;
+    // Validate email provider
+    const isValid = await checkMXRecords(email);
+    if (!isValid) {
+      return {
+        errors: [
+          {
+            field: "email",
+            message: "Email is not valid.",
+          },
+        ],
+      };
+    }
     // Hash password
     const hashedPassword = await argon2.hash(password);
     // Try to create a new user and handle errors
@@ -106,14 +129,7 @@ export class UserResolver {
       const newUser = await ctx.db
         .insert(users)
         .values({ email, password: hashedPassword, name })
-        .returning({
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt,
-          image: users.image,
-        });
+        .returning();
       // Store user id in session
       const user = newUser[0];
       ctx.req.session.userId = user.id;
@@ -121,9 +137,146 @@ export class UserResolver {
       return { user };
       //   Catch errors
     } catch (error) {
-      return registerErrorhandler(error);
+      return registerErrorHandler(error);
     }
   }
+  // Request a confirmation Code
+  @Mutation(() => ConfirmResponse)
+  async requestConfirmationCode(
+    @Ctx() ctx: MyContext
+  ): Promise<ConfirmResponse> {
+    try {
+      // Get email
+      if (!ctx.req.session.userId) {
+        return {
+          success: false,
+          errors: [
+            {
+              field: "user",
+              message: "Please log in to confirm your email.",
+            },
+          ],
+        };
+      }
+      const result = await ctx.db
+        .select()
+        .from(users)
+        .where(eq(users.id, ctx.req.session.userId));
+      const { email, confirmed } = result[0];
+      if (confirmed) {
+        return {
+          success: false,
+          errors: [
+            {
+              field: "confirmed",
+              message: "User is already confirmed.",
+            },
+          ],
+        };
+      }
+      // Generate confirmation code
+      const confirmationCode = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
+      // Save confirmation code to redis
+      await ctx.redis.set(`confirmationCode:${email}`, confirmationCode, {
+        EX: 300, // 5 minutes
+      });
+      // Send the confirmation email
+      await sendEmail({
+        to: email,
+        subject: "Confirm your account",
+        text: `Your confirmation code is: ${confirmationCode}`,
+      });
+      return {
+        success: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        errors: [
+          {
+            field: "root",
+            message: error.message,
+          },
+        ],
+      };
+    }
+  }
+
+  // Confirm user
+  @Mutation(() => ConfirmResponse)
+  async confirmUser(
+    @Ctx() ctx: MyContext,
+    @Arg("code") code: string
+  ): Promise<ConfirmResponse> {
+    try {
+      // Check if user id exists in session
+      if (!ctx.req.session.userId) {
+        return {
+          success: false,
+          errors: [
+            {
+              field: "session",
+              message: "Please log in to confirm your email.",
+            },
+          ],
+        };
+      }
+      // Get user with id from session
+      const result = await ctx.db
+        .select()
+        .from(users)
+        .where(eq(users.id, ctx.req.session.userId));
+      // Destructure email and confirmed fields from returned user
+      const { email, confirmed, id } = result[0];
+      if (confirmed) {
+        return {
+          success: false,
+          errors: [
+            {
+              field: "confirmed",
+              message: "User is already confirmed.",
+            },
+          ],
+        };
+      }
+      // Retrieve stored code from session
+      const storedCode = await ctx.redis.get(`confirmationCode:${email}`);
+      if (!storedCode || storedCode !== code) {
+        return {
+          success: false,
+          errors: [
+            {
+              field: "code",
+              message: "Invalid or expired confirmation code.",
+            },
+          ],
+        };
+      }
+      // Mark user as confirmed in the database
+      await ctx.db
+        .update(users)
+        .set({ confirmed: true })
+        .where(eq(users.id, id));
+      // Remove the code from session
+      await ctx.redis.del(`confirmationCode:${email}`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        errors: [
+          {
+            field: "root",
+            message: error.message,
+          },
+        ],
+      };
+    }
+  }
+
   // Login a new user
   @Mutation(() => UserResponse)
   async loginUser(
@@ -135,7 +288,7 @@ export class UserResolver {
       return {
         errors: [
           {
-            field: "session",
+            field: "root",
             message: "User is already logged in.",
           },
         ],
@@ -174,6 +327,104 @@ export class UserResolver {
     return { user };
   }
 
+  // Request a password reset
+  @Mutation(() => ConfirmResponse)
+  async requestPasswordReset(
+    @Ctx() ctx: MyContext,
+    @Arg("email") email: string
+  ): Promise<ConfirmResponse> {
+    try {
+      // Check if user is already logged in
+      if (ctx.req.session.userId) {
+        return {
+          success: false,
+          errors: [{ field: "root", message: "User is already logged in." }],
+        };
+      }
+      // Check if a user with this email exists
+      const result = await ctx.db
+        .select()
+        .from(users)
+        .where(eq(users.email, email));
+      if (result.length === 0) {
+        return {
+          success: false,
+          errors: [
+            {
+              field: "email",
+              message: "A user with this email does not exist.",
+            },
+          ],
+        };
+      }
+      // Generate reset token
+      const resetToken = uuidv4();
+      // Store in redis
+      await ctx.redis.set(`resetToken:${email}`, resetToken, { EX: 60 }); // 1 minute expiration
+      // Send reset email
+      await sendEmail({
+        to: email,
+        subject: "Password Reset",
+        text: `Your reset token: ${resetToken}`,
+      });
+      return {
+        success: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        errors: [{ field: "root", message: error.message }],
+      };
+    }
+  }
+
+  // Reset password
+  @Mutation(() => ConfirmResponse)
+  async resetPassword(
+    @Ctx() ctx: MyContext,
+    @Arg("email") email: string,
+    @Arg("token") token: string,
+    @Arg("newPassword") newPassword: string
+  ): Promise<ConfirmResponse> {
+    try {
+      // Get stored token from redis
+      const storedToken = await ctx.redis.get(`resetToken:${email}`);
+      if (!storedToken || storedToken !== token) {
+        return {
+          success: false,
+          errors: [
+            {
+              field: "token",
+              message: "Invalid or expired token.",
+            },
+          ],
+        };
+      }
+      // Hash new password
+      const hashedPassword = await argon2.hash(newPassword);
+      // Update user's password in the database
+      await ctx.db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.email, email));
+      // Delete token from redis
+      await ctx.redis.del(`resetToken:${email}`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        errors: [
+          {
+            field: "root",
+            message: error.message,
+          },
+        ],
+      };
+    }
+  }
+
   // Logout a user
   @Mutation(() => Boolean)
   async logoutUser(@Ctx() ctx: MyContext): Promise<boolean> {
@@ -197,7 +448,7 @@ export class UserResolver {
       return {
         errors: [
           {
-            field: "user",
+            field: "root",
             message: "User is not logged in",
           },
         ],

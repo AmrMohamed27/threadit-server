@@ -1,4 +1,11 @@
-import { index, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 // Define a "users" table
 export const users = pgTable(
@@ -13,8 +20,12 @@ export const users = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
     image: text("image"),
+    confirmed: boolean().default(false).notNull(),
   },
-  (table) => [index("idx_users_email").on(table.email)]
+  (table) => [
+    index("idx_users_email").on(table.email),
+    index("idx_users_id").on(table.id),
+  ]
 );
 
 // Define a "posts" table

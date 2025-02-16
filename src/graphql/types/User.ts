@@ -21,4 +21,7 @@ export class User {
 
   @Field(() => String, { nullable: true })
   image?: string;
+
+  @Field(() => Boolean)
+  confirmed: boolean;
 }

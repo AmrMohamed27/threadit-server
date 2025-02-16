@@ -8,7 +8,14 @@ const envSchema = z.object({
   REDIS_HOST: z.string(),
   REDIS_PORT: z.string().transform((val) => parseInt(val)),
   COOKIE_NAME: z.string(),
+  CORS_ORIGIN: z.string(),
   NODE_ENV: z.enum(["development", "production"]),
+  GOOGLE_APP_PASSWORD: z
+    .string()
+    .length(16, {
+      message: "Google app password should be exactly 16 letters",
+    }),
+  GOOGLE_APP_HOST: z.string().email("Google app host should be a valid email"),
 });
 
 // Parse and validate environment variables
