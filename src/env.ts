@@ -8,7 +8,8 @@ const envSchema = z.object({
   REDIS_HOST: z.string(),
   REDIS_PORT: z.string().transform((val) => parseInt(val)),
   COOKIE_NAME: z.string(),
-  CORS_ORIGIN: z.string(),
+  CORS_ORIGIN_FRONTEND: z.string(),
+  CORS_ORIGIN_BACKEND: z.string(),
   NODE_ENV: z.enum(["development", "production"]),
   GOOGLE_APP_PASSWORD: z
     .string()

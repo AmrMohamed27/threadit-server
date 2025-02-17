@@ -31,7 +31,10 @@ export async function startServer() {
   // Apply Apollo Middleware
   app.use(
     "/graphql",
-    cors({ origin: env.CORS_ORIGIN, credentials: true }), // Enable CORS
+    cors({
+      origin: [env.CORS_ORIGIN_FRONTEND, env.CORS_ORIGIN_BACKEND],
+      credentials: true,
+    }), // Enable CORS
     json(), // Parse JSON bodies
     // Redis session middleware
     session({

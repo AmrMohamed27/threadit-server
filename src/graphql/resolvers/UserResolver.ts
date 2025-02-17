@@ -384,7 +384,7 @@ export class UserResolver {
       await sendEmail({
         to: email,
         subject: "Password Reset",
-        text: `Visit this link to reset your password: ${env.CORS_ORIGIN}/forgot-password/${resetToken}?email=${email}`,
+        text: `Visit this link to reset your password: ${env.CORS_ORIGIN_FRONTEND}/forgot-password/${resetToken}?email=${email}`,
       });
       return {
         success: true,
@@ -497,10 +497,32 @@ export class UserResolver {
     );
   }
 
+  // Toggle Confirmed field in users table
+  @Mutation(() => Boolean)
+  async toggleConfirmed(@Ctx() ctx: MyContext) {
+    try {
+      // Get user by id
+      const id = ctx.req.session.userId;
+      if (!id) {
+        return false;
+      }
+      const user = await ctx.db.select().from(users).where(eq(users.id, id));
+      // Toggle confirmed field
+      const confirmed = !user[0].confirmed;
+      await ctx.db.update(users).set({ confirmed }).where(eq(users.id, id));
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  }
+
   // Me query
   @Query(() => UserResponse)
   async me(@Ctx() ctx: MyContext): Promise<UserResponse> {
     // Check if user is logged in
+    console.log("Session object:", ctx.req.session);
+    console.log("User ID in session:", ctx.req.session.userId);
     if (!ctx.req.session.userId) {
       return {
         errors: [
