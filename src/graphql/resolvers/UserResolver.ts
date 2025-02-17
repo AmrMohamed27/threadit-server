@@ -379,12 +379,12 @@ export class UserResolver {
       // Generate reset token
       const resetToken = uuidv4();
       // Store in redis
-      await ctx.redis.set(`resetToken:${email}`, resetToken, { EX: 60 }); // 1 minute expiration
+      await ctx.redis.set(`resetToken:${email}`, resetToken, { EX: 60 * 60 }); // 1 hour expiration
       // Send reset email
       await sendEmail({
         to: email,
         subject: "Password Reset",
-        text: `Visit this link to reset your password: ${env.CORS_ORIGIN}/forgot-password/${resetToken}`,
+        text: `Visit this link to reset your password: ${env.CORS_ORIGIN}/forgot-password/${resetToken}?email=${email}`,
       });
       return {
         success: true,
@@ -398,7 +398,7 @@ export class UserResolver {
   }
 
   // Check if token exists
-  @Mutation(() => ConfirmResponse)
+  @Query(() => ConfirmResponse)
   async checkToken(
     @Ctx() ctx: MyContext,
     @Arg("options") options: CheckTokenInput
