@@ -43,6 +43,12 @@ class UpdatePostInput {
   @Field({ nullable: true })
   content?: string;
 }
+// Get User's Posts Input Type
+@InputType()
+class GetUserPostsInput {
+  @Field({ nullable: true })
+  userId?: number;
+}
 
 @Resolver()
 export class PostResolver {
@@ -72,8 +78,49 @@ export class PostResolver {
     };
   }
 
+  // Query to get all the user's posts
+  @Query(() => PostResponse)
+  // Context object contains request and response headers and database connection, function returns an array of posts or errors
+  async getUserPosts(
+    @Ctx() ctx: MyContext,
+    @Arg("userId", { nullable: true }) userId?: number
+  ): Promise<PostResponse> {
+    const authorId = userId ? userId : ctx.req.session.userId;
+    if (!authorId) {
+      return {
+        errors: [
+          {
+            field: "authorId",
+            message: "You must be logged in to get your posts",
+          },
+        ],
+      };
+    }
+    // Fetch all posts from database
+    const allPosts = await ctx.db
+      .select()
+      .from(posts)
+      .where(eq(posts.authorId, authorId))
+      .orderBy(desc(posts.createdAt));
+    // Handle not found error
+    if (!allPosts || allPosts.length === 0) {
+      return {
+        errors: [
+          {
+            field: "posts",
+            message: "No posts found",
+          },
+        ],
+      };
+    }
+    // Return posts array
+    return {
+      postsArray: allPosts,
+    };
+  }
+
   // Query to get a post by id
-  @Query(() => PostResponse, { nullable: true })
+  @Query(() => PostResponse)
   async getPost(
     @Ctx() ctx: MyContext,
     @Arg("id", () => Int) id: number
@@ -152,6 +199,7 @@ export class PostResolver {
       };
     }
   }
+
   // Mutation to delete a post
   @Mutation(() => ConfirmResponse)
   async deletePost(
@@ -224,8 +272,9 @@ export class PostResolver {
       };
     }
   }
+
   // Mutation to update a post
-  @Mutation(() => ConfirmResponse, { nullable: true })
+  @Mutation(() => ConfirmResponse)
   async updatePost(
     @Ctx() ctx: MyContext,
     @Arg("options") options: UpdatePostInput
