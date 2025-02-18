@@ -43,12 +43,6 @@ class UpdatePostInput {
   @Field({ nullable: true })
   content?: string;
 }
-// Get User's Posts Input Type
-@InputType()
-class GetUserPostsInput {
-  @Field({ nullable: true })
-  userId?: number;
-}
 
 @Resolver()
 export class PostResolver {
