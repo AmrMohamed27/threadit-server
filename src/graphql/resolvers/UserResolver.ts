@@ -12,7 +12,7 @@ import { returnedUser, users } from "../../database/schema";
 import { User } from "../types/User";
 import argon2 from "argon2";
 import { eq } from "drizzle-orm";
-import { MyContext } from "../types";
+import { ConfirmResponse, FieldError, MyContext } from "../types";
 import { env } from "../../env";
 import { v4 as uuidv4 } from "uuid";
 import { sendEmail } from "../../email/emailService";
@@ -57,28 +57,11 @@ class CheckTokenInput {
   email: string;
 }
 
-// Error Type
-@ObjectType()
-class FieldError {
-  @Field()
-  field: string;
-  @Field()
-  message: string;
-}
-
 // Login Return Type
 @ObjectType()
 class UserResponse {
   @Field(() => User, { nullable: true })
   user?: returnedUser;
-  @Field(() => [FieldError], { nullable: true })
-  errors?: FieldError[];
-}
-
-@ObjectType()
-class ConfirmResponse {
-  @Field(() => Boolean)
-  success: boolean;
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }

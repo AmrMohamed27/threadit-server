@@ -16,4 +16,7 @@ export class Post {
 
   @Field(() => String)
   updatedAt: Date;
+
+  @Field(() => Int)
+  authorId: number;
 }
