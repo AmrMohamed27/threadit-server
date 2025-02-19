@@ -11,7 +11,7 @@ import {
 } from "type-graphql";
 import { posts, returnedPost } from "../../database/schema";
 import { Post } from "../types/Post";
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { ConfirmResponse, FieldError, MyContext } from "../types";
 
 // Post Response type
@@ -25,6 +25,14 @@ class PostResponse {
   errors?: FieldError[];
 }
 
+// Get All Posts Input Type
+@InputType()
+class GetAllPostsInput {
+  @Field()
+  page: number;
+  @Field()
+  limit: number;
+}
 // Create Post Input Type
 @InputType()
 class CreatePostInput {
@@ -49,12 +57,33 @@ export class PostResolver {
   // Query to get all posts
   @Query(() => PostResponse)
   // Context object contains request and response headers and database connection, function returns an array of posts or errors
-  async getAllPosts(@Ctx() ctx: MyContext): Promise<PostResponse> {
+  async getAllPosts(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetAllPostsInput
+  ): Promise<PostResponse> {
+    // Destructure input
+    const { page, limit } = options;
+    // Check if page is valid
+    const countResult = await ctx.db.select({ count: count() }).from(posts);
+    const postsCount = countResult[0].count;
+    const totalPages = Math.ceil(postsCount / limit);
+    if (page < 1 || page > totalPages) {
+      return {
+        errors: [
+          {
+            field: "page",
+            message: `Page number must be >= 1 and <= ${totalPages}`,
+          },
+        ],
+      };
+    }
     // Fetch all posts from database
     const allPosts = await ctx.db
       .select()
       .from(posts)
-      .orderBy(desc(posts.createdAt));
+      .orderBy(desc(posts.createdAt))
+      .limit(limit)
+      .offset((page - 1) * 5);
     // Handle not found error
     if (!allPosts || allPosts.length === 0) {
       return {
@@ -70,6 +99,14 @@ export class PostResolver {
     return {
       postsArray: allPosts,
     };
+  }
+
+  // Query to get the count of posts
+  @Query(() => Int)
+  async getPostsCount(@Ctx() ctx: MyContext): Promise<number> {
+    // Fetch all posts from database
+    const countResult = await ctx.db.select({ count: count() }).from(posts);
+    return countResult[0].count;
   }
 
   // Query to get all the user's posts

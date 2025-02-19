@@ -340,7 +340,7 @@ export class VoteResolver {
   @Mutation(() => ConfirmResponse)
   async deleteVote(
     @Ctx() ctx: MyContext,
-    @Arg("id") id: number
+    @Arg("id", () => Int) id: number
   ): Promise<ConfirmResponse> {
     // Check if user is logged in
     const userId = ctx.req.session.userId;
