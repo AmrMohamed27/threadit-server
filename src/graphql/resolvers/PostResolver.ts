@@ -11,8 +11,9 @@ import {
 } from "type-graphql";
 import { posts, returnedPost } from "../../database/schema";
 import { Post } from "../types/Post";
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, ilike, or } from "drizzle-orm";
 import { ConfirmResponse, FieldError, MyContext } from "../types";
+import { env } from "../../env";
 
 // Post Response type
 @ObjectType()
@@ -23,11 +24,23 @@ class PostResponse {
   postsArray?: returnedPost[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
+  @Field(() => Int, { nullable: true })
+  count?: number;
 }
 
 // Get All Posts Input Type
 @InputType()
 class GetAllPostsInput {
+  @Field()
+  page: number;
+  @Field()
+  limit: number;
+}
+// Get Search Result Input Type
+@InputType()
+class GetSearchResultInput {
+  @Field()
+  searchTerm: string;
   @Field()
   page: number;
   @Field()
@@ -78,14 +91,24 @@ export class PostResolver {
       };
     }
     // Fetch all posts from database
-    const allPosts = await ctx.db
-      .select()
+    const result = await ctx.db
+      .select({
+        posts: {
+          id: posts.id,
+          title: posts.title,
+          content: posts.content,
+          createdAt: posts.createdAt,
+          updatedAt: posts.updatedAt,
+          authorId: posts.authorId,
+        },
+        totalCount: ctx.db.$count(posts),
+      })
       .from(posts)
       .orderBy(desc(posts.createdAt))
       .limit(limit)
-      .offset((page - 1) * 5);
+      .offset((page - 1) * limit);
     // Handle not found error
-    if (!allPosts || allPosts.length === 0) {
+    if (!result || result.length === 0) {
       return {
         errors: [
           {
@@ -97,7 +120,73 @@ export class PostResolver {
     }
     // Return posts array
     return {
-      postsArray: allPosts,
+      postsArray: result.map((result) => result.posts),
+      count: result[0].totalCount,
+    };
+  }
+
+  // Query to search for posts using a search term
+  @Query(() => PostResponse)
+  async searchPosts(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetSearchResultInput
+  ): Promise<PostResponse> {
+    // Destructure input
+    const { searchTerm, page, limit } = options;
+    if (searchTerm.length === 0) {
+      return {
+        errors: [
+          {
+            field: "searchTerm",
+            message: "Search term cannot be empty",
+          },
+        ],
+      };
+    }
+    // Fetch all posts from database
+    const result = await ctx.db
+      .select({
+        posts: {
+          id: posts.id,
+          title: posts.title,
+          content: posts.content,
+          createdAt: posts.createdAt,
+          updatedAt: posts.updatedAt,
+          authorId: posts.authorId,
+        },
+        totalCount: ctx.db.$count(
+          posts,
+          or(
+            ilike(posts.content, "%" + searchTerm + "%"),
+            ilike(posts.title, "%" + searchTerm + "%")
+          )
+        ),
+      })
+      .from(posts)
+      .where(
+        or(
+          ilike(posts.content, "%" + searchTerm + "%"),
+          ilike(posts.title, "%" + searchTerm + "%")
+        )
+      )
+      .orderBy(desc(posts.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+    // Handle not found error
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "posts",
+            message: "No posts found",
+          },
+        ],
+      };
+    }
+    // Return posts array
+    return {
+      postsArray: result.map((result) => result.posts),
+      count: result[0].totalCount,
     };
   }
 

@@ -11,11 +11,9 @@ const envSchema = z.object({
   CORS_ORIGIN_FRONTEND: z.string(),
   CORS_ORIGIN_BACKEND: z.string(),
   NODE_ENV: z.enum(["development", "production"]),
-  GOOGLE_APP_PASSWORD: z
-    .string()
-    .length(16, {
-      message: "Google app password should be exactly 16 letters",
-    }),
+  GOOGLE_APP_PASSWORD: z.string().length(16, {
+    message: "Google app password should be exactly 16 letters",
+  }),
   GOOGLE_APP_HOST: z.string().email("Google app host should be a valid email"),
 });
 

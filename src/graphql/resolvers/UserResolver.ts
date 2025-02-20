@@ -3,6 +3,7 @@ import {
   Ctx,
   Field,
   InputType,
+  Int,
   Mutation,
   ObjectType,
   Query,
@@ -523,5 +524,27 @@ export class UserResolver {
       .where(eq(users.id, ctx.req.session.userId));
     // Return user
     return { user: user[0] };
+  }
+
+  // Get user by id
+  @Query(() => UserResponse)
+  async getUserById(@Ctx() ctx: MyContext, @Arg("id", () => Int) id: number) {
+    // Fetch user by id from database
+    const result = await ctx.db.select().from(users).where(eq(users.id, id));
+    // Handle not found error
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "id",
+            message: "No user found with that id",
+          },
+        ],
+      };
+    }
+    // Return user
+    return {
+      user: result[0],
+    };
   }
 }
