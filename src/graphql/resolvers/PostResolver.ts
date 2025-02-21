@@ -30,6 +30,81 @@ export type extendedPost = returnedPost & {
   author?: returnedUserWithoutPassword | null;
 };
 
+interface selectionProps {
+  ctx: MyContext;
+  userId: number | undefined;
+}
+
+interface searchSelectionProps extends selectionProps {
+  searchTerm: string;
+}
+
+const postSelection = ({ ctx, userId }: selectionProps) => ({
+  id: posts.id,
+  title: posts.title,
+  content: posts.content,
+  createdAt: posts.createdAt,
+  updatedAt: posts.updatedAt,
+  authorId: posts.authorId,
+  // Author Details
+  author: {
+    id: users.id,
+    name: users.name,
+    image: users.image,
+    email: users.email,
+    createdAt: users.createdAt,
+    updatedAt: users.updatedAt,
+    confirmed: users.confirmed,
+  },
+  // Upvote Count
+  upvotesCount: ctx.db.$count(
+    votes,
+    and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
+  ),
+  // Downvote Count
+  downvotesCount: ctx.db.$count(
+    votes,
+    and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
+  ),
+  // If the current user has upvoted
+  isUpvoted: ctx.db.$count(
+    votes,
+    and(
+      eq(votes.postId, posts.id),
+      eq(votes.userId, userId ?? 0),
+      eq(votes.isUpvote, true)
+    )
+  ),
+  // If the current user has downvoted
+  isDownvoted: ctx.db.$count(
+    votes,
+    and(
+      eq(votes.postId, posts.id),
+      eq(votes.userId, userId ?? 0),
+      eq(votes.isUpvote, false)
+    )
+  ),
+  // Comment Count
+  commentsCount: count(comments),
+  // Posts count
+  postsCount: ctx.db.$count(posts),
+});
+
+const searchSelection = ({
+  ctx,
+  userId,
+  searchTerm,
+}: searchSelectionProps) => ({
+  ...postSelection({ ctx, userId }),
+  totalCount: ctx.db.$count(
+    posts,
+    or(
+      ilike(posts.content, "%" + searchTerm + "%"),
+      ilike(posts.title, "%" + searchTerm + "%")
+    )
+  ),
+});
+
 // Post Response type
 @ObjectType()
 class PostResponse {
@@ -56,6 +131,15 @@ class GetAllPostsInput {
 class GetSearchResultInput {
   @Field()
   searchTerm: string;
+  @Field()
+  page: number;
+  @Field()
+  limit: number;
+}
+@InputType()
+class GetUserPostsInput {
+  @Field()
+  userId: number;
   @Field()
   page: number;
   @Field()
@@ -95,59 +179,7 @@ export class PostResolver {
     const userId = ctx.req.session.userId;
     // Fetch posts with author, upvote count, user upvoted status, and comment count
     const result = await ctx.db
-      .select({
-        id: posts.id,
-        title: posts.title,
-        content: posts.content,
-        createdAt: posts.createdAt,
-        updatedAt: posts.updatedAt,
-        authorId: posts.authorId,
-        // Author Details
-        author: {
-          id: users.id,
-          name: users.name,
-          image: users.image,
-          email: users.email,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt,
-          confirmed: users.confirmed,
-        },
-        // Upvote Count
-        upvotesCount: ctx.db.$count(
-          votes,
-          and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
-        ),
-        // Downvote Count
-        downvotesCount: ctx.db.$count(
-          votes,
-          and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
-        ),
-
-        // If the current user has upvoted
-        isUpvoted: ctx.db.$count(
-          votes,
-          and(
-            eq(votes.postId, posts.id),
-            eq(votes.userId, userId ?? 0),
-            eq(votes.isUpvote, true)
-          )
-        ),
-        // If the current user has downvoted
-        isDownvoted: ctx.db.$count(
-          votes,
-          and(
-            eq(votes.postId, posts.id),
-            eq(votes.userId, userId ?? 0),
-            eq(votes.isUpvote, false)
-          )
-        ),
-
-        // Comment Count
-        commentsCount: count(comments),
-
-        // Posts count
-        postsCount: ctx.db.$count(posts),
-      })
+      .select(postSelection({ ctx, userId }))
       .from(posts)
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
@@ -201,25 +233,11 @@ export class PostResolver {
         ],
       };
     }
+    // Get user id from session
+    const userId = ctx.req.session.userId;
     // Fetch all posts from database
     const result = await ctx.db
-      .select({
-        posts: {
-          id: posts.id,
-          title: posts.title,
-          content: posts.content,
-          createdAt: posts.createdAt,
-          updatedAt: posts.updatedAt,
-          authorId: posts.authorId,
-        },
-        totalCount: ctx.db.$count(
-          posts,
-          or(
-            ilike(posts.content, "%" + searchTerm + "%"),
-            ilike(posts.title, "%" + searchTerm + "%")
-          )
-        ),
-      })
+      .select(searchSelection({ ctx, userId, searchTerm }))
       .from(posts)
       .where(
         or(
@@ -227,6 +245,10 @@ export class PostResolver {
           ilike(posts.title, "%" + searchTerm + "%")
         )
       )
+      .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+      .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+      .groupBy(posts.id, users.id) // Group by to avoid duplicates
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset((page - 1) * limit);
@@ -243,7 +265,21 @@ export class PostResolver {
     }
     // Return posts array
     return {
-      postsArray: result.map((result) => result.posts),
+      postsArray: result.map(
+        ({
+          isUpvoted,
+          isDownvoted,
+          postsCount,
+          upvotesCount,
+          downvotesCount,
+          ...post
+        }) => ({
+          ...post,
+          isUpvoted:
+            isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+          upvotesCount: upvotesCount - downvotesCount,
+        })
+      ),
       count: result[0].totalCount,
     };
   }
@@ -261,8 +297,10 @@ export class PostResolver {
   // Context object contains request and response headers and database connection, function returns an array of posts or errors
   async getUserPosts(
     @Ctx() ctx: MyContext,
-    @Arg("userId", { nullable: true }) userId?: number
+    @Arg("options") options: GetUserPostsInput
   ): Promise<PostResponse> {
+    // Destructure input
+    const { userId, page, limit } = options;
     const authorId = userId ? userId : ctx.req.session.userId;
     if (!authorId) {
       return {
@@ -276,9 +314,15 @@ export class PostResolver {
     }
     // Fetch all posts from database
     const allPosts = await ctx.db
-      .select()
+      .select(postSelection({ ctx, userId: authorId }))
       .from(posts)
       .where(eq(posts.authorId, authorId))
+      .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+      .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+      .groupBy(posts.id, users.id) // Group by to avoid duplicates
+      .limit(limit)
+      .offset((page - 1) * limit)
       .orderBy(desc(posts.createdAt));
     // Handle not found error
     if (!allPosts || allPosts.length === 0) {
@@ -293,7 +337,22 @@ export class PostResolver {
     }
     // Return posts array
     return {
-      postsArray: allPosts,
+      postsArray: allPosts.map(
+        ({
+          isUpvoted,
+          isDownvoted,
+          postsCount,
+          upvotesCount,
+          downvotesCount,
+          ...post
+        }) => ({
+          ...post,
+          isUpvoted:
+            isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+          upvotesCount: upvotesCount - downvotesCount,
+        })
+      ),
+      count: allPosts[0].postsCount,
     };
   }
 
@@ -303,8 +362,16 @@ export class PostResolver {
     @Ctx() ctx: MyContext,
     @Arg("id", () => Int) id: number
   ): Promise<PostResponse> {
+    // Get user id from session
+    const userId = ctx.req.session.userId;
     // Fetch post by id from database
-    const result = await ctx.db.select().from(posts).where(eq(posts.id, id));
+    const result = await ctx.db
+      .select(postSelection({ ctx, userId }))
+      .from(posts)
+      .where(eq(posts.id, id))
+      .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+      .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
     // Handle not found error
     if (!result || result.length === 0) {
       return {
@@ -316,9 +383,19 @@ export class PostResolver {
         ],
       };
     }
+    const post = result[0];
     // Return post
     return {
-      post: result[0],
+      post: {
+        ...post,
+        isUpvoted:
+          post.isUpvoted > 0
+            ? "upvote"
+            : post.isDownvoted > 0
+            ? "downvote"
+            : "none",
+        upvotesCount: post.upvotesCount - post.downvotesCount,
+      },
     };
   }
 
