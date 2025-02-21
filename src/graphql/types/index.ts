@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "src/database/db";
 import { redisClient } from "src/redis";
-import { ObjectType, Field } from "type-graphql";
+import { ObjectType, Field, registerEnumType } from "type-graphql";
 
 export interface MyContext {
   req: Request;
@@ -25,3 +25,15 @@ export class ConfirmResponse {
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }
+export type voteOptions = "upvote" | "downvote" | "none";
+
+export enum VoteOptions {
+  Upvote = "upvote",
+  Downvote = "downvote",
+  None = "none",
+}
+
+registerEnumType(VoteOptions, {
+  name: "VoteOptions", // This name will be used in GraphQL schema
+  description: "Represents the user's vote status on a post",
+});

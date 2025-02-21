@@ -232,6 +232,19 @@ export class VoteResolver {
         .from(votes)
         .where(and(eq(votes.userId, authorId), eq(votes.postId, postId)));
       if (existingVote.length > 0) {
+        // If the new vote is the same as the existing vote, delete the existing vote
+        if (isUpvote === existingVote[0].isUpvote) {
+          await ctx.db.delete(votes).where(eq(votes.id, existingVote[0].id));
+        }
+        // If the new vote is different from the existing vote, update the existing vote
+        else {
+          await ctx.db
+            .update(votes)
+            .set({
+              isUpvote,
+            })
+            .where(eq(votes.id, existingVote[0].id));
+        }
         return {
           errors: [
             {
@@ -290,6 +303,7 @@ export class VoteResolver {
         .from(votes)
         .where(and(eq(votes.userId, authorId), eq(votes.commentId, commentId)));
       if (existingVote.length > 0) {
+        await ctx.db.delete(votes).where(eq(votes.id, existingVote[0].id));
         return {
           errors: [
             {

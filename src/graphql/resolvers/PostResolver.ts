@@ -1,3 +1,5 @@
+// TODO: Fix Get All Posts Query Performance
+
 import {
   Arg,
   Ctx,
@@ -9,19 +11,32 @@ import {
   Query,
   Resolver,
 } from "type-graphql";
-import { posts, returnedPost } from "../../database/schema";
+import {
+  comments,
+  posts,
+  returnedPost,
+  returnedUserWithoutPassword,
+  users,
+  votes,
+} from "../../database/schema";
 import { Post } from "../types/Post";
-import { count, desc, eq, ilike, or } from "drizzle-orm";
-import { ConfirmResponse, FieldError, MyContext } from "../types";
-import { env } from "../../env";
+import { and, count, desc, eq, ilike, or } from "drizzle-orm";
+import { ConfirmResponse, FieldError, MyContext, voteOptions } from "../types";
+
+export type extendedPost = returnedPost & {
+  upvotesCount?: number;
+  commentsCount?: number;
+  isUpvoted?: voteOptions;
+  author?: returnedUserWithoutPassword | null;
+};
 
 // Post Response type
 @ObjectType()
 class PostResponse {
   @Field(() => Post, { nullable: true })
-  post?: returnedPost;
+  post?: extendedPost;
   @Field(() => [Post], { nullable: true })
-  postsArray?: returnedPost[];
+  postsArray?: extendedPost[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
   @Field(() => Int, { nullable: true })
@@ -76,52 +91,95 @@ export class PostResolver {
   ): Promise<PostResponse> {
     // Destructure input
     const { page, limit } = options;
-    // Check if page is valid
-    const countResult = await ctx.db.select({ count: count() }).from(posts);
-    const postsCount = countResult[0].count;
-    const totalPages = Math.ceil(postsCount / limit);
-    if (page < 1 || page > totalPages) {
-      return {
-        errors: [
-          {
-            field: "page",
-            message: `Page number must be >= 1 and <= ${totalPages}`,
-          },
-        ],
-      };
-    }
-    // Fetch all posts from database
+    // Get user id from session if logged in
+    const userId = ctx.req.session.userId;
+    // Fetch posts with author, upvote count, user upvoted status, and comment count
     const result = await ctx.db
       .select({
-        posts: {
-          id: posts.id,
-          title: posts.title,
-          content: posts.content,
-          createdAt: posts.createdAt,
-          updatedAt: posts.updatedAt,
-          authorId: posts.authorId,
+        id: posts.id,
+        title: posts.title,
+        content: posts.content,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        authorId: posts.authorId,
+        // Author Details
+        author: {
+          id: users.id,
+          name: users.name,
+          image: users.image,
+          email: users.email,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+          confirmed: users.confirmed,
         },
-        totalCount: ctx.db.$count(posts),
+        // Upvote Count
+        upvotesCount: ctx.db.$count(
+          votes,
+          and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
+        ),
+        // Downvote Count
+        downvotesCount: ctx.db.$count(
+          votes,
+          and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
+        ),
+
+        // If the current user has upvoted
+        isUpvoted: ctx.db.$count(
+          votes,
+          and(
+            eq(votes.postId, posts.id),
+            eq(votes.userId, userId ?? 0),
+            eq(votes.isUpvote, true)
+          )
+        ),
+        // If the current user has downvoted
+        isDownvoted: ctx.db.$count(
+          votes,
+          and(
+            eq(votes.postId, posts.id),
+            eq(votes.userId, userId ?? 0),
+            eq(votes.isUpvote, false)
+          )
+        ),
+
+        // Comment Count
+        commentsCount: count(comments),
+
+        // Posts count
+        postsCount: ctx.db.$count(posts),
       })
       .from(posts)
+      .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+      .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+      .groupBy(posts.id, users.id) // Group by to avoid duplicates
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset((page - 1) * limit);
-    // Handle not found error
+
     if (!result || result.length === 0) {
       return {
-        errors: [
-          {
-            field: "posts",
-            message: "No posts found",
-          },
-        ],
+        errors: [{ field: "posts", message: "No posts found" }],
       };
     }
-    // Return posts array
+
     return {
-      postsArray: result.map((result) => result.posts),
-      count: result[0].totalCount,
+      postsArray: result.map(
+        ({
+          isUpvoted,
+          isDownvoted,
+          postsCount,
+          upvotesCount,
+          downvotesCount,
+          ...post
+        }) => ({
+          ...post,
+          isUpvoted:
+            isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+          upvotesCount: upvotesCount - downvotesCount,
+        })
+      ),
+      count: result[0].postsCount,
     };
   }
 

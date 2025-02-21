@@ -1,4 +1,6 @@
 import { Field, Int, ObjectType } from "type-graphql";
+import { User } from "./User";
+import { VoteOptions, voteOptions } from ".";
 
 @ObjectType()
 export class Post {
@@ -19,4 +21,17 @@ export class Post {
 
   @Field(() => Int)
   authorId: number;
+
+  // Additional Fields
+  @Field(() => Int, { nullable: true })
+  upvotesCount?: number;
+
+  @Field(() => VoteOptions, { nullable: true })
+  isUpvoted?: voteOptions;
+
+  @Field(() => Int, { nullable: true })
+  commentsCount?: number;
+
+  @Field(() => User, { nullable: true })
+  author?: User;
 }
