@@ -372,6 +372,7 @@ export class PostResolver {
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+      .groupBy(posts.id, users.id); // Group by to avoid duplicates
     // Handle not found error
     if (!result || result.length === 0) {
       return {
