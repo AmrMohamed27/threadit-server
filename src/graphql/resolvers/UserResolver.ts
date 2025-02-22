@@ -505,8 +505,6 @@ export class UserResolver {
   @Query(() => UserResponse)
   async me(@Ctx() ctx: MyContext): Promise<UserResponse> {
     // Check if user is logged in
-    console.log("Session object:", ctx.req.session);
-    console.log("User ID in session:", ctx.req.session.userId);
     if (!ctx.req.session.userId) {
       return {
         errors: [

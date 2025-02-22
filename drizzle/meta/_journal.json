@@ -71,6 +71,13 @@
       "when": 1740201135539,
       "tag": "0009_high_silverclaw",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1740248357272,
+      "tag": "0010_milky_riptide",
+      "breakpoints": true
     }
   ]
 }

@@ -122,12 +122,32 @@ export const hiddenPosts = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.postId] })]
 );
 
+// Create a table for saved posts
+export const savedPosts = pgTable(
+  "saved_posts",
+  {
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "cascade",
+      }),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, {
+        onDelete: "cascade",
+      }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.postId] })]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   comments: many(comments),
   votes: many(votes),
   hiddenPosts: many(hiddenPosts),
+  savedPosts: many(savedPosts),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -173,6 +193,17 @@ export const hiddenPostsRelations = relations(hiddenPosts, ({ one }) => ({
   }),
   post: one(posts, {
     fields: [hiddenPosts.postId],
+    references: [posts.id],
+  }),
+}));
+
+export const savedPostsRelations = relations(savedPosts, ({ one }) => ({
+  user: one(users, {
+    fields: [savedPosts.userId],
+    references: [users.id],
+  }),
+  post: one(posts, {
+    fields: [savedPosts.postId],
     references: [posts.id],
   }),
 }));

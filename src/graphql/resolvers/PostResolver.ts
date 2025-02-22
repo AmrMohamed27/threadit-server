@@ -29,16 +29,16 @@ export type extendedPost = returnedPost & {
   author?: returnedUserWithoutPassword | null;
 };
 
-interface selectionProps {
+export interface selectionProps {
   ctx: MyContext;
   userId: number | undefined;
 }
 
-interface searchSelectionProps extends selectionProps {
+export interface searchSelectionProps extends selectionProps {
   searchTerm: string;
 }
 
-const postSelection = ({ ctx, userId }: selectionProps) => ({
+export const postSelection = ({ ctx, userId }: selectionProps) => ({
   id: posts.id,
   title: posts.title,
   content: posts.content,
@@ -102,7 +102,7 @@ const postSelection = ({ ctx, userId }: selectionProps) => ({
   ),
 });
 
-const searchSelection = ({
+export const searchSelection = ({
   ctx,
   userId,
   searchTerm,
@@ -119,7 +119,7 @@ const searchSelection = ({
 
 // Post Response type
 @ObjectType()
-class PostResponse {
+export class PostResponse {
   @Field(() => Post, { nullable: true })
   post?: extendedPost;
   @Field(() => [Post], { nullable: true })
@@ -132,7 +132,7 @@ class PostResponse {
 
 // Get All Posts Input Type
 @InputType()
-class GetAllPostsInput {
+export class GetAllPostsInput {
   @Field()
   page: number;
   @Field()
@@ -265,9 +265,22 @@ export class PostResolver {
       .select(searchSelection({ ctx, userId, searchTerm }))
       .from(posts)
       .where(
-        or(
-          ilike(posts.content, "%" + searchTerm + "%"),
-          ilike(posts.title, "%" + searchTerm + "%")
+        and(
+          or(
+            ilike(posts.content, "%" + searchTerm + "%"),
+            ilike(posts.title, "%" + searchTerm + "%")
+          ), // Exclude hidden posts
+          notExists(
+            ctx.db
+              .select()
+              .from(hiddenPosts)
+              .where(
+                and(
+                  eq(hiddenPosts.postId, posts.id),
+                  eq(hiddenPosts.userId, userId ?? 0)
+                )
+              )
+          )
         )
       )
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
@@ -446,7 +459,6 @@ export class PostResolver {
         ],
       };
     }
-    console.log(authorId);
     // Create new post and insert it in database
     try {
       const newPost = await ctx.db
