@@ -1,5 +1,3 @@
-// TODO: Fix Get All Posts Query Performance
-
 import {
   Arg,
   Ctx,
@@ -13,6 +11,7 @@ import {
 } from "type-graphql";
 import {
   comments,
+  hiddenPosts,
   posts,
   returnedPost,
   returnedUserWithoutPassword,
@@ -20,7 +19,7 @@ import {
   votes,
 } from "../../database/schema";
 import { Post } from "../types/Post";
-import { and, count, desc, eq, ilike, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, notExists, or } from "drizzle-orm";
 import { ConfirmResponse, FieldError, MyContext, voteOptions } from "../types";
 
 export type extendedPost = returnedPost & {
@@ -87,7 +86,20 @@ const postSelection = ({ ctx, userId }: selectionProps) => ({
   // Comment Count
   commentsCount: count(comments),
   // Posts count
-  postsCount: ctx.db.$count(posts),
+  postsCount: ctx.db.$count(
+    posts,
+    notExists(
+      ctx.db
+        .select()
+        .from(hiddenPosts)
+        .where(
+          and(
+            eq(hiddenPosts.postId, posts.id),
+            eq(hiddenPosts.userId, userId ?? 0)
+          )
+        )
+    )
+  ),
 });
 
 const searchSelection = ({
@@ -181,6 +193,20 @@ export class PostResolver {
     const result = await ctx.db
       .select(postSelection({ ctx, userId }))
       .from(posts)
+      .where(
+        // Exclude posts where there is a match in hiddenPosts
+        notExists(
+          ctx.db
+            .select()
+            .from(hiddenPosts)
+            .where(
+              and(
+                eq(hiddenPosts.postId, posts.id),
+                eq(hiddenPosts.userId, userId ?? 0)
+              )
+            )
+        )
+      )
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
@@ -194,7 +220,6 @@ export class PostResolver {
         errors: [{ field: "posts", message: "No posts found" }],
       };
     }
-
     return {
       postsArray: result.map(
         ({
@@ -474,40 +499,18 @@ export class PostResolver {
         ],
       };
     }
-    const result = await ctx.db.select().from(posts).where(eq(posts.id, id));
-    if (!result || result.length === 0) {
-      return {
-        success: false,
-        errors: [
-          {
-            field: "id",
-            message: "No post found with that id",
-          },
-        ],
-      };
-    }
-    const post = result[0];
-    if (post.authorId !== authorId) {
-      return {
-        success: false,
-        errors: [
-          {
-            field: "authorId",
-            message: "You are not authorized to delete this post",
-          },
-        ],
-      };
-    }
     try {
-      const result = await ctx.db.delete(posts).where(eq(posts.id, id));
-      console.log(result);
+      const result = await ctx.db
+        .delete(posts)
+        .where(and(eq(posts.id, id), eq(posts.authorId, authorId)));
       if (result.rowCount === 0) {
         return {
           success: false,
           errors: [
             {
               field: "root",
-              message: "No posts deleted",
+              message:
+                "No posts deleted. Please make sure a post with this id exists and you have permission to delete it.",
             },
           ],
         };

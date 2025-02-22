@@ -1,0 +1,1 @@
+ALTER TABLE "hidden_posts" DROP COLUMN "id";

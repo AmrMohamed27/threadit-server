@@ -4,6 +4,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -24,10 +25,7 @@ export const users = pgTable(
     image: text("image"),
     confirmed: boolean().default(false).notNull(),
   },
-  (table) => [
-    index("idx_users_email").on(table.email),
-    index("idx_users_id").on(table.id),
-  ]
+  (table) => [index("idx_users_email").on(table.email)]
 );
 
 // Define Posts Table
@@ -47,10 +45,7 @@ export const posts = pgTable(
         onDelete: "cascade",
       }),
   },
-  (table) => [
-    index("idx_posts_id").on(table.id),
-    index("idx_posts_authorId").on(table.authorId),
-  ]
+  (table) => [index("idx_posts_authorId").on(table.authorId)]
 );
 
 // Define Comments Table
@@ -75,7 +70,6 @@ export const comments = pgTable(
       }),
   },
   (table) => [
-    index("idx_comments_id").on(table.id),
     index("idx_comments_authorId").on(table.authorId),
     index("idx_comments_postId").on(table.postId),
   ]
@@ -110,11 +104,30 @@ export const votes = pgTable(
   ]
 );
 
+// Create a table for hidden posts
+export const hiddenPosts = pgTable(
+  "hidden_posts",
+  {
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "cascade",
+      }),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, {
+        onDelete: "cascade",
+      }),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.postId] })]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   comments: many(comments),
   votes: many(votes),
+  hiddenPosts: many(hiddenPosts),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -153,6 +166,17 @@ export const votesRelations = relations(votes, ({ one }) => ({
   }),
 }));
 
+export const hiddenPostsRelations = relations(hiddenPosts, ({ one }) => ({
+  user: one(users, {
+    fields: [hiddenPosts.userId],
+    references: [users.id],
+  }),
+  post: one(posts, {
+    fields: [hiddenPosts.postId],
+    references: [posts.id],
+  }),
+}));
+
 // Export types
 export type returnedUser = typeof users.$inferSelect;
 export type returnedUserWithoutPassword = Omit<returnedUser, "password">;
@@ -163,3 +187,5 @@ export type newUser = typeof users.$inferInsert;
 export type newPost = typeof posts.$inferInsert;
 export type newComment = typeof comments.$inferInsert;
 export type newVote = typeof votes.$inferInsert;
+export type newHiddenPost = typeof hiddenPosts.$inferInsert;
+export type returnedHiddenPost = typeof hiddenPosts.$inferSelect;
