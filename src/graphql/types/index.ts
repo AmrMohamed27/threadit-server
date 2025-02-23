@@ -37,3 +37,5 @@ registerEnumType(VoteOptions, {
   name: "VoteOptions", // This name will be used in GraphQL schema
   description: "Represents the user's vote status on a post",
 });
+
+export type SortOptions = "Best" | "Hot" | "New" | "Top" | "Old";

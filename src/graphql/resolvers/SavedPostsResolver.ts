@@ -8,7 +8,7 @@ import {
   users,
   votes,
 } from "../../database/schema";
-import { GetAllPostsInput, PostResponse, selectionProps } from "./PostResolver";
+import { GetAllPostsInput, PostResponse, selectionProps, sorter } from "./PostResolver";
 
 export const savedPostSelection = ({ ctx, userId }: selectionProps) => ({
   id: posts.id,
@@ -163,7 +163,7 @@ export class SavedPostsResolver {
     @Arg("options") options: GetAllPostsInput
   ): Promise<PostResponse> {
     // Destructure input
-    const { page, limit } = options;
+    const { page, limit, sortBy } = options;
     // Get user id from session
     const userId = ctx.req.session.userId;
     if (!userId) {
@@ -198,7 +198,7 @@ export class SavedPostsResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .groupBy(posts.id, users.id) // Group by to avoid duplicates
-      .orderBy(desc(posts.createdAt))
+      .orderBy(sorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
 

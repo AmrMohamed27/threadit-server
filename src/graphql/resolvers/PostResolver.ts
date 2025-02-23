@@ -19,8 +19,24 @@ import {
   votes,
 } from "../../database/schema";
 import { Post } from "../types/Post";
-import { and, count, desc, eq, ilike, notExists, or } from "drizzle-orm";
-import { ConfirmResponse, FieldError, MyContext, voteOptions } from "../types";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
+import {
+  ConfirmResponse,
+  FieldError,
+  MyContext,
+  SortOptions,
+  voteOptions,
+} from "../types";
 
 export type extendedPost = returnedPost & {
   upvotesCount?: number;
@@ -102,6 +118,23 @@ export const postSelection = ({ ctx, userId }: selectionProps) => ({
   ),
 });
 
+export const sorter = (sortBy: SortOptions) =>
+  sortBy === "Best"
+    ? desc(
+        sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)`
+      ) // Upvotes - Downvotes
+    : sortBy === "Hot"
+    ? desc(
+        sql`(COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)) / (EXTRACT(EPOCH FROM NOW() - posts.created_at) + 2)`
+      ) // Hot ranking formula
+    : sortBy === "New"
+    ? desc(posts.createdAt) // Most recent first
+    : sortBy === "Top"
+    ? desc(sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true)`) // Total upvotes
+    : sortBy === "Old"
+    ? asc(posts.createdAt) // Oldest first
+    : desc(posts.createdAt); // Default: sort by newest posts
+
 export const searchSelection = ({
   ctx,
   userId,
@@ -137,6 +170,8 @@ export class GetAllPostsInput {
   page: number;
   @Field()
   limit: number;
+  @Field(() => String, { nullable: true })
+  sortBy?: SortOptions;
 }
 // Get Search Result Input Type
 @InputType()
@@ -147,6 +182,8 @@ class GetSearchResultInput {
   page: number;
   @Field()
   limit: number;
+  @Field(() => String, { nullable: true })
+  sortBy?: SortOptions;
 }
 @InputType()
 class GetUserPostsInput {
@@ -186,7 +223,7 @@ export class PostResolver {
     @Arg("options") options: GetAllPostsInput
   ): Promise<PostResponse> {
     // Destructure input
-    const { page, limit } = options;
+    const { page, limit, sortBy } = options;
     // Get user id from session if logged in
     const userId = ctx.req.session.userId;
     // Fetch posts with author, upvote count, user upvoted status, and comment count
@@ -211,7 +248,7 @@ export class PostResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .groupBy(posts.id, users.id) // Group by to avoid duplicates
-      .orderBy(desc(posts.createdAt))
+      .orderBy(sorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
 
@@ -247,7 +284,7 @@ export class PostResolver {
     @Arg("options") options: GetSearchResultInput
   ): Promise<PostResponse> {
     // Destructure input
-    const { searchTerm, page, limit } = options;
+    const { searchTerm, page, limit, sortBy } = options;
     if (searchTerm.length === 0) {
       return {
         errors: [
@@ -287,7 +324,7 @@ export class PostResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .groupBy(posts.id, users.id) // Group by to avoid duplicates
-      .orderBy(desc(posts.createdAt))
+      .orderBy(sorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
     // Handle not found error
