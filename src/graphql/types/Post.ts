@@ -1,6 +1,7 @@
 import { Field, Int, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { VoteOptionsEnum } from ".";
+import { Community } from "./Community";
 
 @ObjectType()
 export class Post {
@@ -34,6 +35,9 @@ export class Post {
 
   @Field(() => User, { nullable: true })
   author?: User;
+
+  @Field(() => Community, { nullable: true })
+  community?: Community;
 
   @Field(() => Int)
   communityId: number;

@@ -11,6 +11,7 @@ import {
 } from "type-graphql";
 import {
   comments,
+  communities,
   hiddenPosts,
   posts,
   ReturnedPost,
@@ -72,6 +73,16 @@ export const postSelection = ({ ctx, userId }: selectionProps) => ({
     createdAt: users.createdAt,
     updatedAt: users.updatedAt,
     confirmed: users.confirmed,
+  },
+  // Community Details
+  community: {
+    id: communities.id,
+    name: communities.name,
+    description: communities.description,
+    image: communities.image,
+    createdAt: communities.createdAt,
+    updatedAt: communities.updatedAt,
+    creatorId: communities.creatorId,
   },
   // Upvote Count
   upvotesCount: ctx.db.$count(
@@ -251,7 +262,8 @@ export class PostResolver {
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
-      .groupBy(posts.id, users.id) // Group by to avoid duplicates
+      .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+      .groupBy(posts.id, users.id, communities.id) // Group by to avoid duplicates
       .orderBy(postsSorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
@@ -327,7 +339,8 @@ export class PostResolver {
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
-      .groupBy(posts.id, users.id) // Group by to avoid duplicates
+      .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+      .groupBy(posts.id, users.id, communities.id) // Group by to avoid duplicates
       .orderBy(postsSorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
@@ -399,7 +412,8 @@ export class PostResolver {
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
-      .groupBy(posts.id, users.id) // Group by to avoid duplicates
+      .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+      .groupBy(posts.id, users.id, communities.id) // Group by to avoid duplicates
       .limit(limit)
       .offset((page - 1) * limit)
       .orderBy(desc(posts.createdAt));
@@ -450,8 +464,9 @@ export class PostResolver {
       .where(eq(posts.id, id))
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+      .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
-      .groupBy(posts.id, users.id); // Group by to avoid duplicates
+      .groupBy(posts.id, users.id, communities.id); // Group by to avoid duplicates
     // Handle not found error
     if (!result || result.length === 0) {
       return {
