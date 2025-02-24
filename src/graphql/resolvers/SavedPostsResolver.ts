@@ -22,6 +22,7 @@ export const savedPostSelection = ({ ctx, userId }: selectionProps) => ({
   createdAt: posts.createdAt,
   updatedAt: posts.updatedAt,
   authorId: posts.authorId,
+  communityId: posts.communityId,
   // Author Details
   author: {
     id: users.id,

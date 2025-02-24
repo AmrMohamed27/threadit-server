@@ -66,6 +66,7 @@ const PostsPartialObject = {
   createdAt: posts.createdAt,
   updatedAt: posts.updatedAt,
   authorId: posts.authorId,
+  communityId: posts.communityId,
 };
 
 @Resolver()

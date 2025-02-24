@@ -62,6 +62,7 @@ export const postSelection = ({ ctx, userId }: selectionProps) => ({
   createdAt: posts.createdAt,
   updatedAt: posts.updatedAt,
   authorId: posts.authorId,
+  communityId: posts.communityId,
   // Author Details
   author: {
     id: users.id,
@@ -202,6 +203,8 @@ class CreatePostInput {
   title: string;
   @Field()
   content: string;
+  @Field()
+  communityId: number;
 }
 // Update Post Input Type
 @InputType()
@@ -483,7 +486,7 @@ export class PostResolver {
     @Arg("options") options: CreatePostInput
   ): Promise<PostResponse> {
     // Destructure input
-    const { title, content } = options;
+    const { title, content, communityId } = options;
     // Get author id from session
     const authorId = ctx.req.session.userId;
     // Check if user is logged in
@@ -501,7 +504,7 @@ export class PostResolver {
     try {
       const newPost = await ctx.db
         .insert(posts)
-        .values({ title, content, authorId })
+        .values({ title, content, authorId, communityId })
         .returning();
       // handle creation error
       if (!newPost || newPost.length === 0) {

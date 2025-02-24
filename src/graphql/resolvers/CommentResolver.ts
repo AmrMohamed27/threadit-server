@@ -17,7 +17,7 @@ import {
   votes,
 } from "../../database/schema";
 import { Comment } from "../types/Comment";
-import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import {
   ConfirmResponse,
   FieldError,
@@ -65,6 +65,15 @@ class CommentResponse {
   @Field(() => Int, { nullable: true })
   count?: number;
 }
+// Get Comment By Id Input Type
+@InputType()
+class GetCommentByIdInput {
+  @Field(() => Int)
+  commentId: number;
+  @Field(() => Int, { nullable: true })
+  postId?: number;
+}
+
 // Create Comment Input Type
 @InputType()
 class CreateCommentInput {
@@ -217,7 +226,7 @@ export class CommentResolver {
         errors: [
           {
             field: "id",
-            message: "An error happened while fetching comments",
+            message: "No comments found",
           },
         ],
       };
@@ -260,13 +269,22 @@ export class CommentResolver {
   @Query(() => CommentResponse)
   async getComment(
     @Ctx() ctx: MyContext,
-    @Arg("id", () => Int) id: number
+    @Arg("options") options: GetCommentByIdInput
   ): Promise<CommentResponse> {
+    // Destructure input
+    const { commentId, postId } = options;
+    // Get user id from session
+    const userId = ctx.req.session.userId;
     // Fetch comment by id from database
     const result = await ctx.db
-      .select()
+      .select(commentSelection({ ctx, userId, postId }))
       .from(comments)
-      .where(eq(comments.id, id));
+      .where(
+        or(eq(comments.id, commentId), eq(comments.parentCommentId, commentId))
+      )
+      .leftJoin(users, eq(comments.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(comments.id, votes.commentId)) // Join votes to get upvote count
+      .groupBy(comments.id, users.id); // Group by to avoid duplicates
     // Handle not found error
     if (!result || result.length === 0) {
       return {
@@ -278,9 +296,31 @@ export class CommentResolver {
         ],
       };
     }
-    // Return comment
+    // Convert the flat list into a threaded structure
+    const flatList = result.map(
+      ({
+        isUpvoted,
+        isDownvoted,
+        commentsCount,
+        upvotesCount,
+        downvotesCount,
+        parentCommentId,
+        ...comment
+      }) => ({
+        ...comment,
+        isUpvoted: (isUpvoted > 0
+          ? "upvote"
+          : isDownvoted > 0
+          ? "downvote"
+          : "none") as VoteOptions,
+        upvotesCount: upvotesCount - downvotesCount,
+        parentCommentId: comment.id === commentId ? null : parentCommentId,
+      })
+    );
+    const threadedComments = buildCommentThread(flatList);
     return {
-      comment: result[0],
+      commentsArray: threadedComments,
+      count: result[0].commentsCount,
     };
   }
 

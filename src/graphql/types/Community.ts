@@ -1,17 +1,19 @@
 import { Field, Int, ObjectType } from "type-graphql";
 import { User } from "./User";
-import { VoteOptionsEnum } from ".";
 
 @ObjectType()
-export class Post {
+export class Community {
   @Field(() => Int)
   id: number;
 
   @Field()
-  title: string;
+  name: string;
 
   @Field()
-  content: string;
+  description: string;
+
+  @Field(() => String, { nullable: true })
+  image: string;
 
   @Field(() => String)
   createdAt: Date;
@@ -20,21 +22,14 @@ export class Post {
   updatedAt: Date;
 
   @Field(() => Int)
-  authorId: number;
+  creatorId: number;
 
   // Additional Fields
   @Field(() => Int, { nullable: true })
-  upvotesCount?: number;
-
-  @Field(() => VoteOptionsEnum, { nullable: true })
-  isUpvoted?: VoteOptionsEnum;
-
+  postsCount?: number;
   @Field(() => Int, { nullable: true })
-  commentsCount?: number;
+  membersCount?: number;
 
   @Field(() => User, { nullable: true })
-  author?: User;
-
-  @Field(() => Int)
-  communityId: number;
+  creator?: User | null;
 }
