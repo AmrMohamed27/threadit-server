@@ -13,8 +13,8 @@ import {
   comments,
   hiddenPosts,
   posts,
-  returnedPost,
-  returnedUserWithoutPassword,
+  ReturnedPost,
+  ReturnedUserWithoutPassword,
   users,
   votes,
 } from "../../database/schema";
@@ -35,19 +35,20 @@ import {
   FieldError,
   MyContext,
   SortOptions,
-  voteOptions,
+  VoteOptions,
 } from "../types";
 
-export type extendedPost = returnedPost & {
+export type extendedPost = ReturnedPost & {
   upvotesCount?: number;
   commentsCount?: number;
-  isUpvoted?: voteOptions;
-  author?: returnedUserWithoutPassword | null;
+  isUpvoted?: VoteOptions;
+  author?: ReturnedUserWithoutPassword | null;
 };
 
 export interface selectionProps {
   ctx: MyContext;
-  userId: number | undefined;
+  userId?: number;
+  postId?: number;
 }
 
 export interface searchSelectionProps extends selectionProps {
@@ -118,7 +119,7 @@ export const postSelection = ({ ctx, userId }: selectionProps) => ({
   ),
 });
 
-export const sorter = (sortBy: SortOptions) =>
+export const postsSorter = (sortBy: SortOptions) =>
   sortBy === "Best"
     ? desc(
         sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)`
@@ -248,7 +249,7 @@ export class PostResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .groupBy(posts.id, users.id) // Group by to avoid duplicates
-      .orderBy(sorter(sortBy ?? "Best"))
+      .orderBy(postsSorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
 
@@ -324,7 +325,7 @@ export class PostResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .groupBy(posts.id, users.id) // Group by to avoid duplicates
-      .orderBy(sorter(sortBy ?? "Best"))
+      .orderBy(postsSorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
     // Handle not found error

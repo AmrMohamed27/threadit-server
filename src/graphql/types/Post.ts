@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from "type-graphql";
 import { User } from "./User";
-import { VoteOptions, voteOptions } from ".";
+import { VoteOptionsEnum } from ".";
 
 @ObjectType()
 export class Post {
@@ -26,8 +26,8 @@ export class Post {
   @Field(() => Int, { nullable: true })
   upvotesCount?: number;
 
-  @Field(() => VoteOptions, { nullable: true })
-  isUpvoted?: voteOptions;
+  @Field(() => VoteOptionsEnum, { nullable: true })
+  isUpvoted?: VoteOptionsEnum;
 
   @Field(() => Int, { nullable: true })
   commentsCount?: number;

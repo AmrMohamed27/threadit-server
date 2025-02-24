@@ -1,5 +1,6 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+  AnyPgColumn,
   boolean,
   index,
   integer,
@@ -68,10 +69,16 @@ export const comments = pgTable(
       .references(() => posts.id, {
         onDelete: "cascade",
       }),
+    parentCommentId: integer("parent_comment_id")
+      .references((): AnyPgColumn => comments.id, {
+        onDelete: "cascade",
+      })
+      .default(sql`NULL`),
   },
   (table) => [
     index("idx_comments_authorId").on(table.authorId),
     index("idx_comments_postId").on(table.postId),
+    index("idx_comments_parentCommentId").on(table.parentCommentId),
   ]
 );
 
@@ -169,6 +176,7 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
     references: [posts.id],
   }),
   votes: many(votes),
+  comments: many(comments),
 }));
 
 export const votesRelations = relations(votes, ({ one }) => ({
@@ -209,14 +217,14 @@ export const savedPostsRelations = relations(savedPosts, ({ one }) => ({
 }));
 
 // Export types
-export type returnedUser = typeof users.$inferSelect;
-export type returnedUserWithoutPassword = Omit<returnedUser, "password">;
-export type returnedPost = typeof posts.$inferSelect;
-export type returnedComment = typeof comments.$inferSelect;
-export type returnedVote = typeof votes.$inferSelect;
-export type newUser = typeof users.$inferInsert;
-export type newPost = typeof posts.$inferInsert;
-export type newComment = typeof comments.$inferInsert;
-export type newVote = typeof votes.$inferInsert;
-export type newHiddenPost = typeof hiddenPosts.$inferInsert;
-export type returnedHiddenPost = typeof hiddenPosts.$inferSelect;
+export type ReturnedUser = typeof users.$inferSelect;
+export type ReturnedUserWithoutPassword = Omit<ReturnedUser, "password">;
+export type ReturnedPost = typeof posts.$inferSelect;
+export type ReturnedComment = typeof comments.$inferSelect;
+export type ReturnedVote = typeof votes.$inferSelect;
+export type ReturnedHiddenPost = typeof hiddenPosts.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type NewPost = typeof posts.$inferInsert;
+export type NewComment = typeof comments.$inferInsert;
+export type NewVote = typeof votes.$inferInsert;
+export type NewHiddenPost = typeof hiddenPosts.$inferInsert;

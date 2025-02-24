@@ -12,9 +12,9 @@ import {
 import {
   votes,
   posts,
-  returnedVote,
+  ReturnedVote,
   comments,
-  returnedPost,
+  ReturnedPost,
 } from "../../database/schema";
 import { Vote } from "../types/Vote";
 import { and, eq } from "drizzle-orm";
@@ -25,9 +25,9 @@ import { Post } from "../types/Post";
 @ObjectType()
 class VoteResponse {
   @Field(() => Vote, { nullable: true })
-  vote?: returnedVote;
+  vote?: ReturnedVote;
   @Field(() => [Vote], { nullable: true })
-  votesArray?: returnedVote[];
+  votesArray?: ReturnedVote[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }
@@ -35,7 +35,7 @@ class VoteResponse {
 @ObjectType()
 class VotedPostsResponse {
   @Field(() => [Post], { nullable: true })
-  posts?: returnedPost[];
+  posts?: ReturnedPost[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }

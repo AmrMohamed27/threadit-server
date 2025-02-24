@@ -25,15 +25,15 @@ export class ConfirmResponse {
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }
-export type voteOptions = "upvote" | "downvote" | "none";
+export type VoteOptions = "upvote" | "downvote" | "none";
 
-export enum VoteOptions {
+export enum VoteOptionsEnum {
   Upvote = "upvote",
   Downvote = "downvote",
   None = "none",
 }
 
-registerEnumType(VoteOptions, {
+registerEnumType(VoteOptionsEnum, {
   name: "VoteOptions", // This name will be used in GraphQL schema
   description: "Represents the user's vote status on a post",
 });

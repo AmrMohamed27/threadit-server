@@ -1,6 +1,6 @@
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
 import { ConfirmResponse, MyContext } from "../types";
-import { and, count, desc, eq, exists } from "drizzle-orm";
+import { and, count, eq, exists } from "drizzle-orm";
 import {
   comments,
   posts,
@@ -8,7 +8,12 @@ import {
   users,
   votes,
 } from "../../database/schema";
-import { GetAllPostsInput, PostResponse, selectionProps, sorter } from "./PostResolver";
+import {
+  GetAllPostsInput,
+  PostResponse,
+  selectionProps,
+  postsSorter,
+} from "./PostResolver";
 
 export const savedPostSelection = ({ ctx, userId }: selectionProps) => ({
   id: posts.id,
@@ -198,7 +203,7 @@ export class SavedPostsResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .groupBy(posts.id, users.id) // Group by to avoid duplicates
-      .orderBy(sorter(sortBy ?? "Best"))
+      .orderBy(postsSorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
 

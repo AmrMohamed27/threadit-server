@@ -9,7 +9,7 @@ import {
   Query,
   Resolver,
 } from "type-graphql";
-import { returnedUser, users } from "../../database/schema";
+import { ReturnedUser, users } from "../../database/schema";
 import { User } from "../types/User";
 import argon2 from "argon2";
 import { eq } from "drizzle-orm";
@@ -62,7 +62,7 @@ class CheckTokenInput {
 @ObjectType()
 class UserResponse {
   @Field(() => User, { nullable: true })
-  user?: returnedUser;
+  user?: ReturnedUser;
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }

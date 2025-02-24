@@ -9,20 +9,61 @@ import {
   Query,
   Resolver,
 } from "type-graphql";
-import { comments, posts, returnedComment } from "../../database/schema";
+import {
+  comments,
+  ReturnedComment,
+  ReturnedUserWithoutPassword,
+  users,
+  votes,
+} from "../../database/schema";
 import { Comment } from "../types/Comment";
-import { desc, eq } from "drizzle-orm";
-import { ConfirmResponse, FieldError, MyContext } from "../types";
+import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
+import {
+  ConfirmResponse,
+  FieldError,
+  MyContext,
+  SortOptions,
+  VoteOptions,
+} from "../types";
+import { selectionProps } from "./PostResolver";
+import { buildCommentThread } from "../../lib/utils";
+
+export const commentsSorter = (sortBy: SortOptions) =>
+  sortBy === "Best"
+    ? desc(
+        sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)`
+      ) // Upvotes - Downvotes
+    : sortBy === "Hot"
+    ? desc(
+        sql`(COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)) / (EXTRACT(EPOCH FROM NOW() - comments.created_at) + 2)`
+      ) // Hot ranking formula
+    : sortBy === "New"
+    ? desc(comments.createdAt) // Most recent first
+    : sortBy === "Top"
+    ? desc(sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true)`) // Total upvotes
+    : sortBy === "Old"
+    ? asc(comments.createdAt) // Oldest first
+    : desc(comments.createdAt); // Default: sort by newest comments
+
+// Extended comment response type
+export type ExtendedComment = ReturnedComment & {
+  upvotesCount?: number;
+  isUpvoted?: VoteOptions;
+  author?: ReturnedUserWithoutPassword | null;
+  replies?: ExtendedComment[];
+};
 
 // Comment Response type
 @ObjectType()
 class CommentResponse {
   @Field(() => Comment, { nullable: true })
-  comment?: returnedComment;
+  comment?: ExtendedComment;
   @Field(() => [Comment], { nullable: true })
-  commentsArray?: returnedComment[];
+  commentsArray?: ExtendedComment[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
+  @Field(() => Int, { nullable: true })
+  count?: number;
 }
 // Create Comment Input Type
 @InputType()
@@ -31,6 +72,8 @@ class CreateCommentInput {
   content: string;
   @Field()
   postId: number;
+  @Field(() => Int, { nullable: true })
+  parentCommentId?: number;
 }
 
 // Update Comment Input Type
@@ -41,6 +84,66 @@ class UpdateCommentInput {
   @Field()
   content: string;
 }
+
+@InputType()
+class GetPostCommentsInput {
+  @Field(() => Int)
+  postId: number;
+  @Field(() => String, { nullable: true })
+  sortBy?: SortOptions;
+  @Field(() => String, { nullable: true })
+  searchTerm?: string;
+}
+
+export const commentSelection = ({ ctx, userId, postId }: selectionProps) => ({
+  id: comments.id,
+  content: comments.content,
+  createdAt: comments.createdAt,
+  updatedAt: comments.updatedAt,
+  authorId: comments.authorId,
+  postId: comments.postId,
+  parentCommentId: comments.parentCommentId,
+  // Author Details
+  author: {
+    id: users.id,
+    name: users.name,
+    image: users.image,
+    email: users.email,
+    createdAt: users.createdAt,
+    updatedAt: users.updatedAt,
+    confirmed: users.confirmed,
+  },
+  // Upvote Count
+  upvotesCount: ctx.db.$count(
+    votes,
+    and(eq(votes.commentId, comments.id), eq(votes.isUpvote, true))
+  ),
+  // Downvote Count
+  downvotesCount: ctx.db.$count(
+    votes,
+    and(eq(votes.commentId, comments.id), eq(votes.isUpvote, false))
+  ),
+  // If the current user has upvoted
+  isUpvoted: ctx.db.$count(
+    votes,
+    and(
+      eq(votes.commentId, comments.id),
+      eq(votes.userId, userId ?? 0),
+      eq(votes.isUpvote, true)
+    )
+  ),
+  // If the current user has downvoted
+  isDownvoted: ctx.db.$count(
+    votes,
+    and(
+      eq(votes.commentId, comments.id),
+      eq(votes.userId, userId ?? 0),
+      eq(votes.isUpvote, false)
+    )
+  ),
+  // Comments count
+  commentsCount: ctx.db.$count(comments, eq(comments.postId, postId ?? 0)),
+});
 
 @Resolver()
 export class CommentResolver {
@@ -86,15 +189,30 @@ export class CommentResolver {
   @Query(() => CommentResponse)
   async getPostComments(
     @Ctx() ctx: MyContext,
-    @Arg("postId", () => Int) postId: number
+    @Arg("options") options: GetPostCommentsInput
   ): Promise<CommentResponse> {
+    // Destructure input
+    const { postId, sortBy, searchTerm } = options;
+    // Get user id from session
+    const userId = ctx.req.session.userId;
     // Fetch comments by post id from database
-    const allComments = await ctx.db
-      .select()
+    const result = await ctx.db
+      .select(commentSelection({ ctx, userId, postId }))
       .from(comments)
-      .where(eq(comments.postId, postId));
+      .where(
+        searchTerm
+          ? and(
+              eq(comments.postId, postId),
+              ilike(comments.content, "%" + searchTerm + "%")
+            )
+          : eq(comments.postId, postId)
+      )
+      .leftJoin(users, eq(comments.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(comments.id, votes.commentId)) // Join votes to get upvote count
+      .groupBy(comments.id, users.id) // Group by to avoid duplicates
+      .orderBy(commentsSorter(sortBy ?? "Best"));
     // Handle not found error
-    if (!allComments) {
+    if (!result || result.length === 0) {
       return {
         errors: [
           {
@@ -104,10 +222,38 @@ export class CommentResolver {
         ],
       };
     }
-    // Return comment
-    return {
-      commentsArray: allComments,
-    };
+    // Convert the flat list into a threaded structure
+    const flatList = result.map(
+      ({
+        isUpvoted,
+        isDownvoted,
+        commentsCount,
+        upvotesCount,
+        downvotesCount,
+        ...post
+      }) => ({
+        ...post,
+        isUpvoted: (isUpvoted > 0
+          ? "upvote"
+          : isDownvoted > 0
+          ? "downvote"
+          : "none") as VoteOptions,
+        upvotesCount: upvotesCount - downvotesCount,
+      })
+    );
+    if (searchTerm) {
+      // For search results just return a flat list
+      return {
+        commentsArray: flatList,
+        count: result[0].commentsCount,
+      };
+    } else {
+      const threadedComments = buildCommentThread(flatList);
+      return {
+        commentsArray: threadedComments,
+        count: result[0].commentsCount,
+      };
+    }
   }
 
   // Query to get a comment by id
@@ -145,7 +291,7 @@ export class CommentResolver {
     @Arg("options") options: CreateCommentInput
   ): Promise<CommentResponse> {
     // Destructure input
-    const { content, postId } = options;
+    const { content, postId, parentCommentId } = options;
     // Get author id from session
     const authorId = ctx.req.session.userId;
     // Check if user is logged in
@@ -159,26 +305,11 @@ export class CommentResolver {
         ],
       };
     }
-    // Check if the post exists
-    const postExists = await ctx.db
-      .select()
-      .from(posts)
-      .where(eq(posts.id, postId));
-    if (!postExists || postExists.length === 0) {
-      return {
-        errors: [
-          {
-            field: "postId",
-            message: "No post found with that id",
-          },
-        ],
-      };
-    }
     // Create new comment and insert it in database
     try {
       const newComment = await ctx.db
         .insert(comments)
-        .values({ content, authorId, postId })
+        .values({ content, authorId, postId, parentCommentId })
         .returning();
       // handle creation error
       if (!newComment || newComment.length === 0) {

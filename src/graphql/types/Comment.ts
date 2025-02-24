@@ -1,4 +1,6 @@
 import { Field, Int, ObjectType } from "type-graphql";
+import { User } from "./User";
+import { VoteOptions, VoteOptionsEnum } from ".";
 
 @ObjectType()
 export class Comment {
@@ -19,4 +21,20 @@ export class Comment {
 
   @Field(() => Int)
   postId: number;
+
+  @Field(() => Int, { nullable: true })
+  parentCommentId?: number;
+
+  // Additional Fields
+  @Field(() => Int, { nullable: true })
+  upvotesCount?: number;
+
+  @Field(() => VoteOptionsEnum, { nullable: true })
+  isUpvoted?: VoteOptions;
+
+  @Field(() => User, { nullable: true })
+  author?: User;
+
+  @Field(() => [Comment], { nullable: true })
+  replies?: Comment[];
 }
