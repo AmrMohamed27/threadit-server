@@ -19,6 +19,7 @@ import {
   count,
   desc,
   eq,
+  exists,
   ilike,
   notExists,
   or,
@@ -220,18 +221,21 @@ export const communityPostSelection = ({
   // Comment Count
   commentsCount: count(comments),
   // Posts count
-  postsCount: ctx.db.$count(
+  count: ctx.db.$count(
     posts,
-    notExists(
-      ctx.db
-        .select()
-        .from(hiddenPosts)
-        .where(
-          and(
-            eq(hiddenPosts.postId, posts.id),
-            eq(hiddenPosts.userId, userId ?? 0)
+    and(
+      notExists(
+        ctx.db
+          .select()
+          .from(hiddenPosts)
+          .where(
+            and(
+              eq(hiddenPosts.postId, posts.id),
+              eq(hiddenPosts.userId, userId ?? 0)
+            )
           )
-        )
+      ),
+      eq(posts.communityId, communityId ?? 0)
     )
   ),
 });

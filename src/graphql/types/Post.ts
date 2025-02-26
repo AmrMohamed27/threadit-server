@@ -41,4 +41,5 @@ export class Post {
 
   @Field(() => Int)
   communityId: number;
+
 }

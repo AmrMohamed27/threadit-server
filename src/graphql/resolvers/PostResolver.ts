@@ -1,4 +1,9 @@
-import { communityPostSelection, postSelection, postsSorter, searchSelection } from "../../lib/utils";
+import {
+  communityPostSelection,
+  postSelection,
+  postsSorter,
+  searchSelection,
+} from "../../lib/utils";
 import { and, desc, eq, ilike, notExists, or } from "drizzle-orm";
 import { Arg, Ctx, Int, Mutation, Query, Resolver } from "type-graphql";
 import {
@@ -236,7 +241,7 @@ export class PostResolver {
     const userId = ctx.req.session.userId;
     // Fetch all posts from database
     const result = await ctx.db
-      .select(communityPostSelection({ ctx, userId }))
+      .select(communityPostSelection({ ctx, userId, communityId }))
       .from(posts)
       .where(eq(posts.communityId, communityId))
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
@@ -267,7 +272,7 @@ export class PostResolver {
         ({
           isUpvoted,
           isDownvoted,
-          postsCount,
+          count,
           upvotesCount,
           downvotesCount,
           ...post
@@ -278,7 +283,7 @@ export class PostResolver {
           upvotesCount: upvotesCount - downvotesCount,
         })
       ),
-      count: result[0].postsCount,
+      count: result[0].count,
     };
   }
 
