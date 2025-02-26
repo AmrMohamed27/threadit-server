@@ -1,12 +1,3 @@
-import {
-  comments,
-  communities,
-  communityMembers,
-  hiddenPosts,
-  posts,
-  users,
-  votes,
-} from "../database/schema";
 import { ExtendedComment } from "@/graphql/resolvers/CommentResolver";
 import {
   searchSelectionProps,
@@ -19,12 +10,20 @@ import {
   count,
   desc,
   eq,
-  exists,
   ilike,
   notExists,
   or,
   sql,
 } from "drizzle-orm";
+import {
+  comments,
+  communities,
+  communityMembers,
+  hiddenPosts,
+  posts,
+  users,
+  votes,
+} from "../database/schema";
 
 // Helper function to build a nested comment structure
 export const buildCommentThread = (
@@ -91,6 +90,7 @@ export const postSelection = ({ ctx, userId }: selectionProps) => ({
     createdAt: communities.createdAt,
     updatedAt: communities.updatedAt,
     creatorId: communities.creatorId,
+    isPrivate: communities.isPrivate,
     membersCount: ctx.db.$count(
       communityMembers,
       eq(communityMembers.communityId, posts.communityId)
@@ -178,6 +178,7 @@ export const communityPostSelection = ({
     createdAt: communities.createdAt,
     updatedAt: communities.updatedAt,
     creatorId: communities.creatorId,
+    isPrivate: communities.isPrivate,
     membersCount: ctx.db.$count(
       communityMembers,
       eq(communityMembers.communityId, posts.communityId)
@@ -282,6 +283,7 @@ export const communitySelection = ({ ctx, userId }: selectionProps) => ({
   createdAt: communities.createdAt,
   updatedAt: communities.updatedAt,
   creatorId: communities.creatorId,
+  isPrivate: communities.isPrivate,
   // Additional Fields
   postsCount: ctx.db.$count(posts, eq(posts.communityId, communities.id)),
   membersCount: ctx.db.$count(

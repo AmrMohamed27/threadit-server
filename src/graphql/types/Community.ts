@@ -27,6 +27,9 @@ export class Community {
   @Field(() => Int)
   creatorId: number;
 
+  @Field(() => Boolean)
+  isPrivate: boolean;
+
   // Additional Fields
   @Field(() => Int, { nullable: true })
   postsCount?: number;

@@ -1,5 +1,4 @@
-import { communitySelection, searchCommunitySelection } from "../../lib/utils";
-import { and, desc, eq, ilike, not, notExists, or } from "drizzle-orm";
+import { and, desc, eq, ilike, notExists } from "drizzle-orm";
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
 import {
   communities,
@@ -7,13 +6,14 @@ import {
   posts,
   users,
 } from "../../database/schema";
-import { ConfirmResponse, MyContext } from "../../types/resolvers";
+import { communitySelection, searchCommunitySelection } from "../../lib/utils";
 import {
   CommunityResponse,
   CreateCommunityInput,
   GetSearchResultInput,
   UpdateCommunityInput,
 } from "../../types/inputs";
+import { ConfirmResponse, MyContext } from "../../types/resolvers";
 
 @Resolver()
 export class CommunityResolver {
@@ -263,7 +263,7 @@ export class CommunityResolver {
     @Arg("options") options: CreateCommunityInput
   ): Promise<CommunityResponse> {
     // Destructure input
-    const { name, description, image } = options;
+    const { name, description, image, isPrivate = false } = options;
     // Get author id from session
     const creatorId = ctx.req.session.userId;
     // Check if user is logged in
@@ -281,8 +281,8 @@ export class CommunityResolver {
     try {
       const newCommunity = await ctx.db
         .insert(communities)
-        .values({ name, description, image, creatorId })
-        .returning();
+        .values({ name, description, image, creatorId, isPrivate })
+      .returning();
       // handle creation error
       if (!newCommunity || newCommunity.length === 0) {
         return {

@@ -120,6 +120,8 @@ export class CreateCommunityInput {
   description: string;
   @Field({ nullable: true })
   image?: string;
+  @Field(() => Boolean, { nullable: true })
+  isPrivate?: boolean;
 }
 // Input type for updating a community
 @InputType()

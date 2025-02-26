@@ -1,5 +1,6 @@
 import {
   communityPostSelection,
+  communitySelection,
   postSelection,
   postsSorter,
   searchSelection,
@@ -239,6 +240,45 @@ export class PostResolver {
     const { communityId, page, limit, sortBy } = options;
     // Get user id from session
     const userId = ctx.req.session.userId;
+    const communityResult = await ctx.db
+      .selectDistinct(communitySelection({ ctx, userId }))
+      .from(communities)
+      .where(eq(communities.id, communityId))
+      .leftJoin(posts, eq(communities.id, posts.communityId))
+      .leftJoin(users, eq(communities.creatorId, users.id))
+      .leftJoin(
+        communityMembers,
+        eq(communities.id, communityMembers.communityId)
+      )
+      .groupBy(
+        communities.id,
+        posts.id,
+        users.id,
+        communityMembers.communityId
+      );
+
+    if (communityResult.length === 0) {
+      return {
+        errors: [
+          {
+            field: "communityId",
+            message: "No community with this id found.",
+          },
+        ],
+      };
+    }
+    const community = communityResult[0];
+    if (!community.isJoined && community.isPrivate) {
+      return {
+        errors: [
+          {
+            field: "communityId",
+            message:
+              "This community is private. You must be a member to see posts.",
+          },
+        ],
+      };
+    }
     // Fetch all posts from database
     const result = await ctx.db
       .select(communityPostSelection({ ctx, userId, communityId }))

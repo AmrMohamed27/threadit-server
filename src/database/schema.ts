@@ -174,6 +174,7 @@ export const communities = pgTable(
         onDelete: "cascade",
       })
       .notNull(),
+    isPrivate: boolean("is_private").default(false),
   },
   (table) => [index("idx_communities_creatorId").on(table.creatorId)]
 );
