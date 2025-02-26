@@ -1,5 +1,5 @@
-import { communitySelection } from "../../lib/utils";
-import { and, desc, eq, not, notExists } from "drizzle-orm";
+import { communitySelection, searchCommunitySelection } from "../../lib/utils";
+import { and, desc, eq, ilike, not, notExists, or } from "drizzle-orm";
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
 import {
   communities,
@@ -11,6 +11,7 @@ import { ConfirmResponse, MyContext } from "../../types/resolvers";
 import {
   CommunityResponse,
   CreateCommunityInput,
+  GetSearchResultInput,
   UpdateCommunityInput,
 } from "../../types/inputs";
 
@@ -144,6 +145,61 @@ export class CommunityResolver {
         isJoined: c.isJoined > 0,
       })),
       count: result.length,
+    };
+  }
+
+  // Query to search for communities using a search term
+  @Query(() => CommunityResponse)
+  async searchCommunities(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetSearchResultInput
+  ): Promise<CommunityResponse> {
+    // Destructure input
+    const { searchTerm, page, limit } = options;
+    if (searchTerm.length === 0) {
+      return {
+        errors: [
+          {
+            field: "searchTerm",
+            message: "Search term cannot be empty",
+          },
+        ],
+      };
+    }
+    // Get user id from session
+    const userId = ctx.req.session.userId;
+    // Fetch all communities from database
+    const result = await ctx.db
+      .selectDistinct(searchCommunitySelection({ ctx, userId, searchTerm }))
+      .from(communities)
+      .where(ilike(communities.name, "%" + searchTerm + "%"))
+      .leftJoin(posts, eq(communities.id, posts.communityId))
+      .leftJoin(users, eq(communities.creatorId, users.id))
+      .leftJoin(
+        communityMembers,
+        eq(communities.id, communityMembers.communityId)
+      )
+      .groupBy(communities.id, posts.id, users.id)
+      .orderBy(communities.name)
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "communities",
+            message: "No communities found",
+          },
+        ],
+      };
+    }
+    return {
+      communitiesArray: result.map((c) => ({
+        ...c,
+        isJoined: c.isJoined > 0,
+      })),
+      count: result[0].totalCount,
     };
   }
 

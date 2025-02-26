@@ -305,3 +305,16 @@ export const communitySelection = ({ ctx, userId }: selectionProps) => ({
     )
   ),
 });
+
+// Selection object for searching communities
+export const searchCommunitySelection = ({
+  ctx,
+  userId,
+  searchTerm,
+}: searchSelectionProps) => ({
+  ...communitySelection({ ctx, userId }),
+  totalCount: ctx.db.$count(
+    communities,
+    ilike(communities.name, "%" + searchTerm + "%")
+  ),
+});
