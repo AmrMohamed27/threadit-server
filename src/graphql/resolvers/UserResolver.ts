@@ -13,7 +13,7 @@ import { ReturnedUser, users } from "../../database/schema";
 import { User } from "../types/User";
 import argon2 from "argon2";
 import { eq } from "drizzle-orm";
-import { ConfirmResponse, FieldError, MyContext } from "../types";
+import { ConfirmResponse, FieldError, MyContext } from "../../types/resolvers";
 import { env } from "../../env";
 import { v4 as uuidv4 } from "uuid";
 import { sendEmail } from "../../email/emailService";

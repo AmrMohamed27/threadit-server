@@ -11,7 +11,7 @@ import "reflect-metadata";
 import { redisClient, redisStore } from "./redis";
 import { __prod__, env } from "./env";
 import { db } from "./database/db";
-import { MyContext } from "./graphql/types";
+import { MyContext } from "./types/resolvers";
 
 // Start Apollo Server
 export async function startServer() {
@@ -44,7 +44,7 @@ export async function startServer() {
       saveUninitialized: false, // only save session when data exists
       secret: env.REDIS_SECRET,
       cookie: {
-        maxAge: 1000 * 60 * 60 * 24, // 10 years
+        maxAge: 1000 * 60 * 60 * 24, // cookie valid for 1 day
         httpOnly: true,
         secure: __prod__,
         sameSite: false,

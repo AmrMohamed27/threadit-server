@@ -39,3 +39,14 @@ registerEnumType(VoteOptionsEnum, {
 });
 
 export type SortOptions = "Best" | "Hot" | "New" | "Top" | "Old";
+
+export interface selectionProps {
+  ctx: MyContext;
+  userId?: number;
+  postId?: number;
+  communityId?: number;
+}
+
+export interface searchSelectionProps extends selectionProps {
+  searchTerm: string;
+}

@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from "type-graphql";
 import { User } from "./User";
-import { VoteOptionsEnum } from ".";
+import { VoteOptionsEnum } from "../../types/resolvers";
 import { Community } from "./Community";
 
 @ObjectType()

@@ -92,6 +92,13 @@
       "when": 1740423924635,
       "tag": "0012_salty_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1740508828005,
+      "tag": "0013_early_ted_forrester",
+      "breakpoints": true
     }
   ]
 }

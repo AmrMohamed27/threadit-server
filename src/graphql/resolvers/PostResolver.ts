@@ -1,232 +1,26 @@
-import {
-  Arg,
-  Ctx,
-  Field,
-  InputType,
-  Int,
-  Mutation,
-  ObjectType,
-  Query,
-  Resolver,
-} from "type-graphql";
+import { communityPostSelection, postSelection, postsSorter, searchSelection } from "../../lib/utils";
+import { and, desc, eq, ilike, notExists, or } from "drizzle-orm";
+import { Arg, Ctx, Int, Mutation, Query, Resolver } from "type-graphql";
 import {
   comments,
   communities,
+  communityMembers,
   hiddenPosts,
   posts,
-  ReturnedPost,
-  ReturnedUserWithoutPassword,
   users,
   votes,
 } from "../../database/schema";
-import { Post } from "../types/Post";
+import { ConfirmResponse, MyContext } from "../../types/resolvers";
 import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  ilike,
-  notExists,
-  or,
-  sql,
-} from "drizzle-orm";
-import {
-  ConfirmResponse,
-  FieldError,
-  MyContext,
-  SortOptions,
-  VoteOptions,
-} from "../types";
-
-export type extendedPost = ReturnedPost & {
-  upvotesCount?: number;
-  commentsCount?: number;
-  isUpvoted?: VoteOptions;
-  author?: ReturnedUserWithoutPassword | null;
-};
-
-export interface selectionProps {
-  ctx: MyContext;
-  userId?: number;
-  postId?: number;
-}
-
-export interface searchSelectionProps extends selectionProps {
-  searchTerm: string;
-}
-
-export const postSelection = ({ ctx, userId }: selectionProps) => ({
-  id: posts.id,
-  title: posts.title,
-  content: posts.content,
-  createdAt: posts.createdAt,
-  updatedAt: posts.updatedAt,
-  authorId: posts.authorId,
-  communityId: posts.communityId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Community Details
-  community: {
-    id: communities.id,
-    name: communities.name,
-    description: communities.description,
-    image: communities.image,
-    createdAt: communities.createdAt,
-    updatedAt: communities.updatedAt,
-    creatorId: communities.creatorId,
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comment Count
-  commentsCount: count(comments),
-  // Posts count
-  postsCount: ctx.db.$count(
-    posts,
-    notExists(
-      ctx.db
-        .select()
-        .from(hiddenPosts)
-        .where(
-          and(
-            eq(hiddenPosts.postId, posts.id),
-            eq(hiddenPosts.userId, userId ?? 0)
-          )
-        )
-    )
-  ),
-});
-
-export const postsSorter = (sortBy: SortOptions) =>
-  sortBy === "Best"
-    ? desc(
-        sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)`
-      ) // Upvotes - Downvotes
-    : sortBy === "Hot"
-    ? desc(
-        sql`(COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)) / (EXTRACT(EPOCH FROM NOW() - posts.created_at) + 2)`
-      ) // Hot ranking formula
-    : sortBy === "New"
-    ? desc(posts.createdAt) // Most recent first
-    : sortBy === "Top"
-    ? desc(sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true)`) // Total upvotes
-    : sortBy === "Old"
-    ? asc(posts.createdAt) // Oldest first
-    : desc(posts.createdAt); // Default: sort by newest posts
-
-export const searchSelection = ({
-  ctx,
-  userId,
-  searchTerm,
-}: searchSelectionProps) => ({
-  ...postSelection({ ctx, userId }),
-  totalCount: ctx.db.$count(
-    posts,
-    or(
-      ilike(posts.content, "%" + searchTerm + "%"),
-      ilike(posts.title, "%" + searchTerm + "%")
-    )
-  ),
-});
-
-// Post Response type
-@ObjectType()
-export class PostResponse {
-  @Field(() => Post, { nullable: true })
-  post?: extendedPost;
-  @Field(() => [Post], { nullable: true })
-  postsArray?: extendedPost[];
-  @Field(() => [FieldError], { nullable: true })
-  errors?: FieldError[];
-  @Field(() => Int, { nullable: true })
-  count?: number;
-}
-
-// Get All Posts Input Type
-@InputType()
-export class GetAllPostsInput {
-  @Field()
-  page: number;
-  @Field()
-  limit: number;
-  @Field(() => String, { nullable: true })
-  sortBy?: SortOptions;
-}
-// Get Search Result Input Type
-@InputType()
-class GetSearchResultInput {
-  @Field()
-  searchTerm: string;
-  @Field()
-  page: number;
-  @Field()
-  limit: number;
-  @Field(() => String, { nullable: true })
-  sortBy?: SortOptions;
-}
-@InputType()
-class GetUserPostsInput {
-  @Field()
-  userId: number;
-  @Field()
-  page: number;
-  @Field()
-  limit: number;
-}
-// Create Post Input Type
-@InputType()
-class CreatePostInput {
-  @Field()
-  title: string;
-  @Field()
-  content: string;
-  @Field()
-  communityId: number;
-}
-// Update Post Input Type
-@InputType()
-class UpdatePostInput {
-  @Field()
-  id: number;
-  @Field({ nullable: true })
-  title?: string;
-  @Field({ nullable: true })
-  content?: string;
-}
+  CreatePostInput,
+  GetAllPostsInput,
+  GetCommunityPostsInput,
+  GetSearchResultInput,
+  GetUserCommunityPostsInput,
+  GetUserPostsInput,
+  PostResponse,
+  UpdatePostInput,
+} from "../../types/inputs";
 
 @Resolver()
 export class PostResolver {
@@ -263,7 +57,11 @@ export class PostResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
-      .groupBy(posts.id, users.id, communities.id) // Group by to avoid duplicates
+      .leftJoin(
+        communityMembers,
+        eq(posts.communityId, communityMembers.communityId)
+      ) // Join community members to get community member count
+      .groupBy(posts.id, users.id, communities.id, communityMembers.communityId) // Group by to avoid duplicates
       .orderBy(postsSorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
@@ -271,6 +69,197 @@ export class PostResolver {
     if (!result || result.length === 0) {
       return {
         errors: [{ field: "posts", message: "No posts found" }],
+      };
+    }
+    return {
+      postsArray: result.map(
+        ({
+          isUpvoted,
+          isDownvoted,
+          postsCount,
+          upvotesCount,
+          downvotesCount,
+          ...post
+        }) => ({
+          ...post,
+          isUpvoted:
+            isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+          upvotesCount: upvotesCount - downvotesCount,
+        })
+      ),
+      count: result[0].postsCount,
+    };
+  }
+
+  // Query to get all posts in the communities where the user is a member
+  @Query(() => PostResponse)
+  async getUserCommunityPosts(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetUserCommunityPostsInput
+  ): Promise<PostResponse> {
+    // Destructure input
+    const { page, limit, sortBy } = options;
+    // Get user id from session
+    const userId = ctx.req.session.userId;
+    // If user is not logged in, return all posts
+    if (!userId) {
+      const result = await ctx.db
+        .select(postSelection({ ctx }))
+        .from(posts)
+        .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+        .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+        .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+        .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+        .leftJoin(
+          communityMembers,
+          eq(posts.communityId, communityMembers.communityId)
+        ) // Join community members to get community member count
+        .groupBy(
+          posts.id,
+          users.id,
+          communities.id,
+          communityMembers.communityId
+        ) // Group by to avoid duplicates
+        .orderBy(postsSorter(sortBy ?? "Best"))
+        .limit(limit)
+        .offset((page - 1) * limit);
+
+      if (!result || result.length === 0) {
+        return {
+          errors: [{ field: "posts", message: "No posts found" }],
+        };
+      }
+      return {
+        postsArray: result.map(
+          ({
+            isUpvoted,
+            isDownvoted,
+            postsCount,
+            upvotesCount,
+            downvotesCount,
+            ...post
+          }) => ({
+            ...post,
+            isUpvoted:
+              isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+            upvotesCount: upvotesCount - downvotesCount,
+          })
+        ),
+        count: result[0].postsCount,
+      };
+    }
+    // Else, return posts from only the user's communities
+    else {
+      // Fetch posts with author, upvote count, user upvoted status, and comment count
+      const result = await ctx.db
+        .select(postSelection({ ctx, userId }))
+        .from(posts)
+        .where(
+          and(
+            // Exclude posts where there is a match in hiddenPosts
+            notExists(
+              ctx.db
+                .select()
+                .from(hiddenPosts)
+                .where(
+                  and(
+                    eq(hiddenPosts.postId, posts.id),
+                    eq(hiddenPosts.userId, userId ?? 0)
+                  )
+                )
+            ),
+            // Post is in a community where the user is a member
+            and(
+              eq(communityMembers.userId, userId ?? 0),
+              eq(posts.communityId, communityMembers.communityId)
+            )
+          )
+        )
+        .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+        .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+        .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+        .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+        .leftJoin(
+          communityMembers,
+          eq(posts.communityId, communityMembers.communityId)
+        ) // Join community members to get community member count
+        .groupBy(
+          posts.id,
+          users.id,
+          communities.id,
+          communityMembers.communityId
+        ) // Group by to avoid duplicates
+        .orderBy(postsSorter(sortBy ?? "Best"))
+        .limit(limit)
+        .offset((page - 1) * limit);
+
+      if (!result || result.length === 0) {
+        return {
+          errors: [
+            {
+              field: "posts",
+              message: "No posts found",
+            },
+          ],
+        };
+      }
+      return {
+        postsArray: result.map(
+          ({
+            isUpvoted,
+            isDownvoted,
+            postsCount,
+            upvotesCount,
+            downvotesCount,
+            ...post
+          }) => ({
+            ...post,
+            isUpvoted:
+              isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+            upvotesCount: upvotesCount - downvotesCount,
+          })
+        ),
+        count: result[0].postsCount,
+      };
+    }
+  }
+
+  // Query to get all posts in a community
+  @Query(() => PostResponse)
+  async getCommunityPosts(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetCommunityPostsInput
+  ): Promise<PostResponse> {
+    // Destructure input
+    const { communityId, page, limit, sortBy } = options;
+    // Get user id from session
+    const userId = ctx.req.session.userId;
+    // Fetch all posts from database
+    const result = await ctx.db
+      .select(communityPostSelection({ ctx, userId }))
+      .from(posts)
+      .where(eq(posts.communityId, communityId))
+      .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+      .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+      .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+      .leftJoin(
+        communityMembers,
+        eq(posts.communityId, communityMembers.communityId)
+      ) // Join community members to get community member count
+      .groupBy(posts.id, users.id, communities.id, communityMembers.communityId) // Group by to avoid duplicates
+      .orderBy(postsSorter(sortBy ?? "Best"))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "posts",
+            message: "No posts found",
+          },
+        ],
       };
     }
     return {
@@ -340,7 +329,11 @@ export class PostResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
-      .groupBy(posts.id, users.id, communities.id) // Group by to avoid duplicates
+      .leftJoin(
+        communityMembers,
+        eq(posts.communityId, communityMembers.communityId)
+      ) // Join community members to get community member count
+      .groupBy(posts.id, users.id, communities.id, communityMembers.communityId) // Group by to avoid duplicates
       .orderBy(postsSorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
@@ -376,14 +369,6 @@ export class PostResolver {
     };
   }
 
-  // Query to get the count of posts
-  @Query(() => Int)
-  async getPostsCount(@Ctx() ctx: MyContext): Promise<number> {
-    // Fetch all posts from database
-    const countResult = await ctx.db.select({ count: count() }).from(posts);
-    return countResult[0].count;
-  }
-
   // Query to get all the user's posts
   @Query(() => PostResponse)
   // Context object contains request and response headers and database connection, function returns an array of posts or errors
@@ -413,7 +398,11 @@ export class PostResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
       .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
-      .groupBy(posts.id, users.id, communities.id) // Group by to avoid duplicates
+      .leftJoin(
+        communityMembers,
+        eq(posts.communityId, communityMembers.communityId)
+      ) // Join community members to get community member count
+      .groupBy(posts.id, users.id, communities.id, communityMembers.communityId) // Group by to avoid duplicates
       .limit(limit)
       .offset((page - 1) * limit)
       .orderBy(desc(posts.createdAt));
@@ -466,7 +455,16 @@ export class PostResolver {
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
-      .groupBy(posts.id, users.id, communities.id); // Group by to avoid duplicates
+      .leftJoin(
+        communityMembers,
+        eq(posts.communityId, communityMembers.communityId)
+      ) // Join community members to get community member count
+      .groupBy(
+        posts.id,
+        users.id,
+        communities.id,
+        communityMembers.communityId
+      ); // Group by to avoid duplicates
     // Handle not found error
     if (!result || result.length === 0) {
       return {

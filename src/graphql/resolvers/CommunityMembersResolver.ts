@@ -1,6 +1,6 @@
 import { communities, communityMembers } from "../../database/schema";
 import { Arg, Ctx, Field, InputType, Mutation, Resolver } from "type-graphql";
-import { ConfirmResponse, MyContext } from "../types";
+import { ConfirmResponse, MyContext } from "../../types/resolvers";
 import { and, eq } from "drizzle-orm";
 
 // Input type for joining a community

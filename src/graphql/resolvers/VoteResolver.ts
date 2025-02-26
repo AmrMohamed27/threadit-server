@@ -18,7 +18,7 @@ import {
 } from "../../database/schema";
 import { Vote } from "../types/Vote";
 import { and, eq } from "drizzle-orm";
-import { ConfirmResponse, FieldError, MyContext } from "../types";
+import { ConfirmResponse, FieldError, MyContext } from "../../types/resolvers";
 import { Post } from "../types/Post";
 
 // Vote Response type

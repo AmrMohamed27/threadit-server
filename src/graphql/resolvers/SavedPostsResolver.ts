@@ -1,5 +1,9 @@
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
-import { ConfirmResponse, MyContext } from "../types";
+import {
+  ConfirmResponse,
+  MyContext,
+  selectionProps,
+} from "../../types/resolvers";
 import { and, count, eq, exists } from "drizzle-orm";
 import {
   comments,
@@ -8,12 +12,8 @@ import {
   users,
   votes,
 } from "../../database/schema";
-import {
-  GetAllPostsInput,
-  PostResponse,
-  selectionProps,
-  postsSorter,
-} from "./PostResolver";
+import { GetAllPostsInput, PostResponse } from "../../types/inputs";
+import { postsSorter } from "../../lib/utils";
 
 export const savedPostSelection = ({ ctx, userId }: selectionProps) => ({
   id: posts.id,

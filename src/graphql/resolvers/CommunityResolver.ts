@@ -1,100 +1,72 @@
-import { and, desc, eq, or } from "drizzle-orm";
-import {
-  Arg,
-  Ctx,
-  Field,
-  InputType,
-  Int,
-  Mutation,
-  ObjectType,
-  Query,
-  Resolver,
-} from "type-graphql";
+import { communitySelection } from "../../lib/utils";
+import { and, desc, eq, not, notExists } from "drizzle-orm";
+import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
 import {
   communities,
   communityMembers,
   posts,
-  ReturnedCommunity,
-  ReturnedUserWithoutPassword,
   users,
 } from "../../database/schema";
-import { ConfirmResponse, FieldError, MyContext } from "../types";
-import { Community } from "../types/Community";
-
-export type extendedCommunity = ReturnedCommunity & {
-  postsCount?: number;
-  membersCount?: number;
-  creator?: ReturnedUserWithoutPassword | null;
-};
-
-// Community Response type
-@ObjectType()
-export class CommunityResponse {
-  @Field(() => Community, { nullable: true })
-  community?: extendedCommunity;
-  @Field(() => [Community], { nullable: true })
-  communitiesArray?: extendedCommunity[];
-  @Field(() => [FieldError], { nullable: true })
-  errors?: FieldError[];
-  @Field(() => Int, { nullable: true })
-  count?: number;
-}
-// Selection object for community
-export const communitySelection = ({ ctx }: { ctx: MyContext }) => ({
-  id: communities.id,
-  name: communities.name,
-  description: communities.description,
-  image: communities.image,
-  createdAt: communities.createdAt,
-  updatedAt: communities.updatedAt,
-  creatorId: communities.creatorId,
-  // Additional Fields
-  postsCount: ctx.db.$count(posts, eq(posts.communityId, communities.id)),
-  membersCount: ctx.db.$count(
-    communityMembers,
-    eq(communityMembers.communityId, communities.id)
-  ),
-  creator: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-});
-// Input type for creating a community
-@InputType()
-export class CreateCommunityInput {
-  @Field()
-  name: string;
-  @Field()
-  description: string;
-  @Field({ nullable: true })
-  image?: string;
-}
-// Input type for updating a community
-@InputType()
-export class UpdateCommunityInput {
-  @Field()
-  id: number;
-  @Field({ nullable: true })
-  name?: string;
-  @Field({ nullable: true })
-  description?: string;
-  @Field({ nullable: true })
-  image?: string;
-}
+import { ConfirmResponse, MyContext } from "../../types/resolvers";
+import {
+  CommunityResponse,
+  CreateCommunityInput,
+  UpdateCommunityInput,
+} from "../../types/inputs";
 
 @Resolver()
 export class CommunityResolver {
+  // Query to get a community by name
+  @Query(() => CommunityResponse)
+  async getCommunityByName(
+    @Ctx() ctx: MyContext,
+    @Arg("name") name: string
+  ): Promise<CommunityResponse> {
+    // Get user id from session
+    const userId = ctx.req.session.userId;
+    // Fetch community by name from database
+    const result = await ctx.db
+      .selectDistinct(communitySelection({ ctx, userId }))
+      .from(communities)
+      .where(eq(communities.name, name))
+      .leftJoin(posts, eq(communities.id, posts.communityId))
+      .leftJoin(users, eq(communities.creatorId, users.id))
+      .leftJoin(
+        communityMembers,
+        eq(communities.id, communityMembers.communityId)
+      )
+      .groupBy(
+        communities.id,
+        posts.id,
+        users.id,
+        communityMembers.communityId
+      );
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "name",
+            message: "No community found with that name",
+          },
+        ],
+      };
+    }
+    return {
+      community: {
+        ...result[0],
+        isJoined: result[0].isJoined > 0,
+      },
+      count: 1,
+    };
+  }
   // Query to get all communities
   @Query(() => CommunityResponse)
   async getAllCommunities(@Ctx() ctx: MyContext): Promise<CommunityResponse> {
+    // Get user id from session
+    const userId = ctx.req.session.userId;
     // Fetch all communities from database
     const allCommunities = await ctx.db
-      .select(communitySelection({ ctx }))
+      .selectDistinct(communitySelection({ ctx, userId }))
       .from(communities)
       .leftJoin(posts, eq(communities.id, posts.communityId))
       .leftJoin(users, eq(communities.creatorId, users.id))
@@ -110,10 +82,71 @@ export class CommunityResolver {
       };
     }
     return {
-      communitiesArray: allCommunities,
+      communitiesArray: allCommunities.map((c) => ({
+        ...c,
+        isJoined: c.isJoined > 0,
+      })),
       count: allCommunities.length,
     };
   }
+
+  // Query to get the latest 4 communities where the user isn't joined for the explore page
+  @Query(() => CommunityResponse)
+  async getExploreCommunities(
+    @Ctx() ctx: MyContext,
+    @Arg("limit") limit: number
+  ): Promise<CommunityResponse> {
+    // Get user id from session
+    const userId = ctx.req.session.userId;
+    // Fetch all communities from database
+    const result = await ctx.db
+      .selectDistinct(communitySelection({ ctx, userId }))
+      .from(communities)
+      .where(
+        and(
+          eq(communities.id, communityMembers.communityId),
+          notExists(
+            ctx.db
+              .select()
+              .from(communityMembers)
+              .where(
+                and(
+                  eq(communityMembers.communityId, communities.id),
+                  eq(communityMembers.userId, userId ?? 0)
+                )
+              )
+          )
+        )
+      )
+      .leftJoin(posts, eq(communities.id, posts.communityId))
+      .leftJoin(users, eq(communities.creatorId, users.id))
+      .leftJoin(
+        communityMembers,
+        eq(communities.id, communityMembers.communityId)
+      )
+      .groupBy(communities.id, posts.id, users.id)
+      .orderBy(desc(communities.updatedAt))
+      .limit(limit);
+
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "communities",
+            message: "No communities found",
+          },
+        ],
+      };
+    }
+    return {
+      communitiesArray: result.map((c) => ({
+        ...c,
+        isJoined: c.isJoined > 0,
+      })),
+      count: result.length,
+    };
+  }
+
   //   Query to get all the user's communities
   @Query(() => CommunityResponse)
   async getUserCommunities(@Ctx() ctx: MyContext): Promise<CommunityResponse> {
@@ -131,15 +164,12 @@ export class CommunityResolver {
     }
     // Fetch all communities from database
     const result = await ctx.db
-      .select(communitySelection({ ctx }))
+      .selectDistinct(communitySelection({ ctx, userId }))
       .from(communities)
       .where(
-        or(
-          eq(communities.creatorId, userId),
-          and(
-            eq(communities.id, communityMembers.communityId),
-            eq(communityMembers.userId, userId)
-          )
+        and(
+          eq(communities.id, communityMembers.communityId),
+          eq(communityMembers.userId, userId)
         )
       )
       .leftJoin(posts, eq(communities.id, posts.communityId))
@@ -148,7 +178,7 @@ export class CommunityResolver {
         communityMembers,
         eq(communities.id, communityMembers.communityId)
       )
-      .groupBy(communities.id, posts.id, users.id)
+      .groupBy(communities.id, posts.id, users.id, communityMembers.communityId)
       .orderBy(desc(communities.createdAt));
 
     if (!result || result.length === 0) {
@@ -162,7 +192,10 @@ export class CommunityResolver {
       };
     }
     return {
-      communitiesArray: result,
+      communitiesArray: result.map((c) => ({
+        ...c,
+        isJoined: c.isJoined > 0,
+      })),
       count: result.length,
     };
   }

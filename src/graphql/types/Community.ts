@@ -15,6 +15,9 @@ export class Community {
   @Field(() => String, { nullable: true })
   image: string;
 
+  @Field(() => String, { nullable: true })
+  cover: string;
+
   @Field(() => String)
   createdAt: Date;
 
@@ -31,5 +34,8 @@ export class Community {
   membersCount?: number;
 
   @Field(() => User, { nullable: true })
-  creator?: User | null;
+  creator?: User;
+
+  @Field(() => Boolean, { nullable: true })
+  isJoined?: boolean;
 }

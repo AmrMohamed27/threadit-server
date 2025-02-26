@@ -22,10 +22,10 @@ import {
   ConfirmResponse,
   FieldError,
   MyContext,
+  selectionProps,
   SortOptions,
   VoteOptions,
-} from "../types";
-import { selectionProps } from "./PostResolver";
+} from "../../types/resolvers";
 import { buildCommentThread } from "../../lib/utils";
 
 export const commentsSorter = (sortBy: SortOptions) =>

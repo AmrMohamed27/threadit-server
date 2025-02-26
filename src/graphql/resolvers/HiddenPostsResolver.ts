@@ -1,5 +1,5 @@
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
-import { ConfirmResponse, MyContext } from "../types";
+import { ConfirmResponse, MyContext } from "../../types/resolvers";
 import { and, eq } from "drizzle-orm";
 import { hiddenPosts } from "../../database/schema";
 

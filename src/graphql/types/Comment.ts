@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from "type-graphql";
 import { User } from "./User";
-import { VoteOptions, VoteOptionsEnum } from ".";
+import { VoteOptions, VoteOptionsEnum } from "../../types/resolvers";
 
 @ObjectType()
 export class Comment {

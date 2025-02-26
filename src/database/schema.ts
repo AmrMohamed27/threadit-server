@@ -164,6 +164,7 @@ export const communities = pgTable(
     name: text("name").notNull().unique(),
     description: text("description"),
     image: text("image"),
+    cover: text("cover"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
