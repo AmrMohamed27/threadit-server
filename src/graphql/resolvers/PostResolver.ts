@@ -652,7 +652,7 @@ export class PostResolver {
     // Destructure input
     const { id, title, content } = options;
     // Check if title or content is provided
-    if (!title && !content) {
+    if (!title || !content) {
       return {
         success: false,
         errors: [
@@ -677,65 +677,15 @@ export class PostResolver {
         ],
       };
     }
-    // Fetch post by id from database
-    const result = await ctx.db.select().from(posts).where(eq(posts.id, id));
-    // Handle not found error
-    if (!result || result.length === 0) {
-      return {
-        success: false,
-        errors: [
-          {
-            field: "root",
-            message: "No post found with that id",
-          },
-        ],
-      };
-    }
-    // Check if user is authorized to update the post
-    const post = result[0];
-    if (post.authorId !== authorId) {
-      return {
-        success: false,
-        errors: [
-          {
-            field: "authorId",
-            message: "You are not authorized to update this post",
-          },
-        ],
-      };
-    }
-    // Check if title or content is the same as the original
-    if (!title && post.content === content) {
-      return {
-        success: false,
-        errors: [
-          {
-            field: "content",
-            message: "Content is the same as the original",
-          },
-        ],
-      };
-    }
-    if (!content && post.title === title) {
-      return {
-        success: false,
-        errors: [
-          {
-            field: "title",
-            message: "Title is the same as the original",
-          },
-        ],
-      };
-    }
     try {
       // Update post
       const updatedPost = await ctx.db
         .update(posts)
         .set({
-          title: title === undefined ? post.title : title,
-          content: content === undefined ? post.content : content,
+          title,
+          content,
         })
-        .where(eq(posts.id, id))
+        .where(and(eq(posts.id, id), eq(posts.authorId, authorId)))
         .returning();
       if (!updatedPost || updatedPost.length === 0) {
         return {
@@ -743,7 +693,8 @@ export class PostResolver {
           errors: [
             {
               field: "root",
-              message: "An error happened while updating the post",
+              message:
+                "An error happened while updating the post. Please make sure the post exists and you have permission to update it.",
             },
           ],
         };

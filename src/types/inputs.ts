@@ -74,10 +74,10 @@ export class CreatePostInput {
 export class UpdatePostInput {
   @Field()
   id: number;
-  @Field({ nullable: true })
-  title?: string;
-  @Field({ nullable: true })
-  content?: string;
+  @Field()
+  title: string;
+  @Field()
+  content: string;
 }
 
 // Get User's Communities' Posts Input Type
