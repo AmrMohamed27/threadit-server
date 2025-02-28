@@ -1,4 +1,5 @@
 import {
+  ReturnedComment,
   ReturnedCommunity,
   ReturnedPost,
   ReturnedUserWithoutPassword,
@@ -7,6 +8,7 @@ import { FieldError, SortOptions, VoteOptions } from "./resolvers";
 import { Field, InputType, Int, ObjectType } from "type-graphql";
 import { Post } from "../graphql/types/Post";
 import { Community } from "../graphql/types/Community";
+import { Comment } from "../graphql/types/Comment";
 
 export type extendedPost = ReturnedPost & {
   upvotesCount?: number;
@@ -52,12 +54,14 @@ export class GetSearchResultInput {
 }
 @InputType()
 export class GetUserPostsInput {
-  @Field()
-  userId: number;
+  @Field({ nullable: true })
+  userId?: number;
   @Field()
   page: number;
   @Field()
   limit: number;
+  @Field(() => String, { nullable: true })
+  sortBy?: SortOptions;
 }
 // Create Post Input Type
 @InputType()
@@ -147,4 +151,110 @@ export class GetCommunityPostsInput {
   limit: number;
   @Field(() => String, { nullable: true })
   sortBy?: SortOptions;
+}
+
+@InputType()
+export class UpdateUserImageInput {
+  @Field()
+  image: string;
+}
+
+// Extended comment response type
+export type ExtendedComment = ReturnedComment & {
+  upvotesCount?: number;
+  isUpvoted?: VoteOptions;
+  author?: ReturnedUserWithoutPassword | null;
+  replies?: ExtendedComment[];
+};
+
+// Comment Response type
+@ObjectType()
+export class CommentResponse {
+  @Field(() => Comment, { nullable: true })
+  comment?: ExtendedComment;
+  @Field(() => [Comment], { nullable: true })
+  commentsArray?: ExtendedComment[];
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
+  @Field(() => Int, { nullable: true })
+  count?: number;
+}
+// Get Comment By Id Input Type
+@InputType()
+export class GetCommentByIdInput {
+  @Field(() => Int)
+  commentId: number;
+  @Field(() => Int, { nullable: true })
+  postId?: number;
+}
+
+// Create Comment Input Type
+@InputType()
+export class CreateCommentInput {
+  @Field()
+  content: string;
+  @Field()
+  postId: number;
+  @Field(() => Int, { nullable: true })
+  parentCommentId?: number;
+}
+
+// Update Comment Input Type
+@InputType()
+export class UpdateCommentInput {
+  @Field()
+  id: number;
+  @Field()
+  content: string;
+}
+
+@InputType()
+export class GetPostCommentsInput {
+  @Field(() => Int)
+  postId: number;
+  @Field(() => String, { nullable: true })
+  sortBy?: SortOptions;
+  @Field(() => String, { nullable: true })
+  searchTerm?: string;
+}
+
+@InputType()
+export class GetUserCommentsInput {
+  @Field(() => Int, { nullable: true })
+  userId?: number;
+  @Field(() => String, { nullable: true })
+  sortBy?: SortOptions;
+  @Field()
+  limit: number;
+  @Field()
+  page: number;
+}
+
+@InputType()
+export class GetUserHiddenPostsInput {
+  @Field(() => String, { nullable: true })
+  sortBy?: SortOptions;
+  @Field()
+  limit: number;
+  @Field()
+  page: number;
+}
+
+@InputType()
+export class GetUserVotedPostsOptions {
+  @Field(() => String, { nullable: true })
+  sortBy?: SortOptions;
+  @Field()
+  limit: number;
+  @Field()
+  page: number;
+  @Field()
+  isUpvoted: boolean;
+}
+
+// Update user name input
+@InputType()
+export class UpdateUserNameInput {
+  @Field()
+  name: string;
 }

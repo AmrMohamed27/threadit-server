@@ -1,71 +1,18 @@
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
-import {
-  ConfirmResponse,
-  MyContext,
-  selectionProps,
-} from "../../types/resolvers";
+import { ConfirmResponse, MyContext } from "../../types/resolvers";
 import { and, count, eq, exists } from "drizzle-orm";
 import {
   comments,
+  communities,
+  communityMembers,
+  hiddenPosts,
   posts,
   savedPosts,
   users,
   votes,
 } from "../../database/schema";
 import { GetAllPostsInput, PostResponse } from "../../types/inputs";
-import { postsSorter } from "../../lib/utils";
-
-export const savedPostSelection = ({ ctx, userId }: selectionProps) => ({
-  id: posts.id,
-  title: posts.title,
-  content: posts.content,
-  createdAt: posts.createdAt,
-  updatedAt: posts.updatedAt,
-  authorId: posts.authorId,
-  communityId: posts.communityId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comment Count
-  commentsCount: count(comments),
-  // Posts count
-  postsCount: ctx.db.$count(savedPosts, eq(savedPosts.userId, userId ?? 0)),
-});
+import { postsSorter, savedPostSelection } from "../../lib/utils";
 
 @Resolver()
 export class SavedPostsResolver {
@@ -200,10 +147,15 @@ export class SavedPostsResolver {
             )
         )
       )
-      .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+      .leftJoin(users, eq(posts.id, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
-      .groupBy(posts.id, users.id) // Group by to avoid duplicates
+      .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+      .leftJoin(
+        communityMembers,
+        eq(posts.communityId, communityMembers.communityId)
+      ) // Join community members to get community member count
+      .groupBy(posts.id, users.id, communities.id, communityMembers.communityId) // Group by to avoid duplicates
       .orderBy(postsSorter(sortBy ?? "Best"))
       .limit(limit)
       .offset((page - 1) * limit);
@@ -213,12 +165,29 @@ export class SavedPostsResolver {
         errors: [{ field: "posts", message: "No saved posts found" }],
       };
     }
+
+    const resultCount = await ctx.db
+      .select({ count: count() })
+      .from(posts)
+      .where(
+        // Only include posts that are saved by the user
+        exists(
+          ctx.db
+            .select()
+            .from(savedPosts)
+            .where(
+              and(
+                eq(savedPosts.postId, posts.id),
+                eq(savedPosts.userId, userId ?? 0)
+              )
+            )
+        )
+      );
     return {
       postsArray: result.map(
         ({
           isUpvoted,
           isDownvoted,
-          postsCount,
           upvotesCount,
           downvotesCount,
           ...post
@@ -229,7 +198,7 @@ export class SavedPostsResolver {
           upvotesCount: upvotesCount - downvotesCount,
         })
       ),
-      count: result[0].postsCount,
+      count: resultCount[0].count,
     };
   }
 }

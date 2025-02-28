@@ -1,166 +1,35 @@
+import { and, eq, ilike, or } from "drizzle-orm";
+import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
+import { comments, users, votes } from "../../database/schema";
 import {
-  Arg,
-  Ctx,
-  Field,
-  InputType,
-  Int,
-  Mutation,
-  ObjectType,
-  Query,
-  Resolver,
-} from "type-graphql";
+  buildCommentThread,
+  commentSelection,
+  commentsSorter,
+  userCommentsSelection,
+} from "../../lib/utils";
 import {
-  comments,
-  ReturnedComment,
-  ReturnedUserWithoutPassword,
-  users,
-  votes,
-} from "../../database/schema";
-import { Comment } from "../types/Comment";
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
-import {
-  ConfirmResponse,
-  FieldError,
-  MyContext,
-  selectionProps,
-  SortOptions,
-  VoteOptions,
-} from "../../types/resolvers";
-import { buildCommentThread } from "../../lib/utils";
-
-export const commentsSorter = (sortBy: SortOptions) =>
-  sortBy === "Best"
-    ? desc(
-        sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)`
-      ) // Upvotes - Downvotes
-    : sortBy === "Hot"
-    ? desc(
-        sql`(COUNT(votes.id) FILTER (WHERE votes.is_upvote = true) - COUNT(votes.id) FILTER (WHERE votes.is_upvote = false)) / (EXTRACT(EPOCH FROM NOW() - comments.created_at) + 2)`
-      ) // Hot ranking formula
-    : sortBy === "New"
-    ? desc(comments.createdAt) // Most recent first
-    : sortBy === "Top"
-    ? desc(sql`COUNT(votes.id) FILTER (WHERE votes.is_upvote = true)`) // Total upvotes
-    : sortBy === "Old"
-    ? asc(comments.createdAt) // Oldest first
-    : desc(comments.createdAt); // Default: sort by newest comments
-
-// Extended comment response type
-export type ExtendedComment = ReturnedComment & {
-  upvotesCount?: number;
-  isUpvoted?: VoteOptions;
-  author?: ReturnedUserWithoutPassword | null;
-  replies?: ExtendedComment[];
-};
-
-// Comment Response type
-@ObjectType()
-class CommentResponse {
-  @Field(() => Comment, { nullable: true })
-  comment?: ExtendedComment;
-  @Field(() => [Comment], { nullable: true })
-  commentsArray?: ExtendedComment[];
-  @Field(() => [FieldError], { nullable: true })
-  errors?: FieldError[];
-  @Field(() => Int, { nullable: true })
-  count?: number;
-}
-// Get Comment By Id Input Type
-@InputType()
-class GetCommentByIdInput {
-  @Field(() => Int)
-  commentId: number;
-  @Field(() => Int, { nullable: true })
-  postId?: number;
-}
-
-// Create Comment Input Type
-@InputType()
-class CreateCommentInput {
-  @Field()
-  content: string;
-  @Field()
-  postId: number;
-  @Field(() => Int, { nullable: true })
-  parentCommentId?: number;
-}
-
-// Update Comment Input Type
-@InputType()
-class UpdateCommentInput {
-  @Field()
-  id: number;
-  @Field()
-  content: string;
-}
-
-@InputType()
-class GetPostCommentsInput {
-  @Field(() => Int)
-  postId: number;
-  @Field(() => String, { nullable: true })
-  sortBy?: SortOptions;
-  @Field(() => String, { nullable: true })
-  searchTerm?: string;
-}
-
-export const commentSelection = ({ ctx, userId, postId }: selectionProps) => ({
-  id: comments.id,
-  content: comments.content,
-  createdAt: comments.createdAt,
-  updatedAt: comments.updatedAt,
-  authorId: comments.authorId,
-  postId: comments.postId,
-  parentCommentId: comments.parentCommentId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.commentId, comments.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.commentId, comments.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.commentId, comments.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.commentId, comments.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comments count
-  commentsCount: ctx.db.$count(comments, eq(comments.postId, postId ?? 0)),
-});
+  CommentResponse,
+  CreateCommentInput,
+  GetCommentByIdInput,
+  GetPostCommentsInput,
+  GetUserCommentsInput,
+  UpdateCommentInput,
+} from "../../types/inputs";
+import { ConfirmResponse, MyContext, VoteOptions } from "../../types/resolvers";
 
 @Resolver()
 export class CommentResolver {
   // Query to get all comments of a user
   @Query(() => CommentResponse)
   // Context object contains request and response headers and database connection, function returns an array of comments or errors
-  async getUserComments(@Ctx() ctx: MyContext): Promise<CommentResponse> {
-    const userId = ctx.req.session.userId;
+  async getUserComments(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetUserCommentsInput
+  ): Promise<CommentResponse> {
+    // Destructure input
+    const { userId: passedUserId, sortBy, page, limit } = options;
+    const loggedInUserId = ctx.req.session.userId;
+    const userId = passedUserId ? passedUserId : loggedInUserId;
     if (!userId) {
       return {
         errors: [
@@ -173,10 +42,15 @@ export class CommentResolver {
     }
     // Fetch all comments from database
     const allComments = await ctx.db
-      .select()
+      .select(userCommentsSelection({ ctx, userId }))
       .from(comments)
       .where(eq(comments.authorId, userId))
-      .orderBy(desc(comments.createdAt));
+      .leftJoin(users, eq(comments.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(comments.id, votes.commentId)) // Join votes to get upvote count
+      .groupBy(comments.id, users.id) // Group by to avoid duplicates
+      .orderBy(commentsSorter(sortBy ?? "Best"))
+      .limit(limit)
+      .offset((page - 1) * limit);
     // Handle not found error
     if (!allComments || allComments.length === 0) {
       return {
@@ -190,7 +64,25 @@ export class CommentResolver {
     }
     // Return comments array
     return {
-      commentsArray: allComments,
+      commentsArray: allComments.map(
+        ({
+          isUpvoted,
+          isDownvoted,
+          commentsCount,
+          upvotesCount,
+          downvotesCount,
+          ...post
+        }) => ({
+          ...post,
+          isUpvoted: (isUpvoted > 0
+            ? "upvote"
+            : isDownvoted > 0
+            ? "downvote"
+            : "none") as VoteOptions,
+          upvotesCount: upvotesCount - downvotesCount,
+        })
+      ),
+      count: allComments[0].commentsCount,
     };
   }
 

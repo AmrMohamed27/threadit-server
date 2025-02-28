@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import {
   Arg,
   Ctx,
@@ -10,16 +11,13 @@ import {
   Resolver,
 } from "type-graphql";
 import {
-  votes,
+  comments,
   posts,
   ReturnedVote,
-  comments,
-  ReturnedPost,
+  votes
 } from "../../database/schema";
-import { Vote } from "../types/Vote";
-import { and, eq } from "drizzle-orm";
 import { ConfirmResponse, FieldError, MyContext } from "../../types/resolvers";
-import { Post } from "../types/Post";
+import { Vote } from "../types/Vote";
 
 // Vote Response type
 @ObjectType()
@@ -32,13 +30,6 @@ class VoteResponse {
   errors?: FieldError[];
 }
 // Posts and Comments Response Type
-@ObjectType()
-class VotedPostsResponse {
-  @Field(() => [Post], { nullable: true })
-  posts?: ReturnedPost[];
-  @Field(() => [FieldError], { nullable: true })
-  errors?: FieldError[];
-}
 // Create Vote Input Type
 @InputType()
 class CreateVoteInput {
@@ -59,57 +50,9 @@ class UpdateVoteInput {
   isUpvote: boolean;
 }
 
-const PostsPartialObject = {
-  id: posts.id,
-  title: posts.title,
-  content: posts.content,
-  createdAt: posts.createdAt,
-  updatedAt: posts.updatedAt,
-  authorId: posts.authorId,
-  communityId: posts.communityId,
-};
-
 @Resolver()
 export class VoteResolver {
-  // Query to get all posts the user has upvoted
-  @Query(() => VotedPostsResponse)
-  // Context object contains request and response headers and database connection, function returns an array of votes or errors
-  async getUserVotedPosts(@Ctx() ctx: MyContext): Promise<VotedPostsResponse> {
-    // Check if user is logged in
-    const userId = ctx.req.session.userId;
-    if (!userId) {
-      return {
-        errors: [
-          {
-            field: "userId",
-            message: "You must be logged in to get your votes",
-          },
-        ],
-      };
-    }
-    // Fetch all votes from database
-    const allPosts = await ctx.db
-      .select(PostsPartialObject)
-      .from(posts)
-      .innerJoin(votes, eq(votes.postId ?? -4, posts.id))
-      .where(and(eq(votes.userId, userId), eq(votes.isUpvote, true)));
-    // Handle not found error
-    if (!allPosts || allPosts.length === 0) {
-      return {
-        errors: [
-          {
-            field: "votes",
-            message: "No votes found",
-          },
-        ],
-      };
-    }
 
-    // Return votes array
-    return {
-      posts: allPosts,
-    };
-  }
 
   // Query to get all votes of a post
   @Query(() => VoteResponse)

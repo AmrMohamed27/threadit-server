@@ -45,6 +45,7 @@ export interface selectionProps {
   userId?: number;
   postId?: number;
   communityId?: number;
+  isUpvoted?: boolean;
 }
 
 export interface searchSelectionProps extends selectionProps {

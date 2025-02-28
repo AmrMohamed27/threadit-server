@@ -1,11 +1,13 @@
 import {
-  communityPostSelection,
-  communitySelection,
-  postSelection,
-  postsSorter,
-  searchSelection,
-} from "../../lib/utils";
-import { and, desc, eq, ilike, notExists, or } from "drizzle-orm";
+  and,
+  count,
+  eq,
+  exists,
+  ilike,
+  isNull,
+  notExists,
+  or,
+} from "drizzle-orm";
 import { Arg, Ctx, Int, Mutation, Query, Resolver } from "type-graphql";
 import {
   comments,
@@ -16,17 +18,29 @@ import {
   users,
   votes,
 } from "../../database/schema";
-import { ConfirmResponse, MyContext } from "../../types/resolvers";
+import {
+  communityPostSelection,
+  communitySelection,
+  hiddenPostSelection,
+  postSelection,
+  postsSorter,
+  searchSelection,
+  votedPostSelection,
+  userPostsSelection,
+} from "../../lib/utils";
 import {
   CreatePostInput,
   GetAllPostsInput,
   GetCommunityPostsInput,
   GetSearchResultInput,
   GetUserCommunityPostsInput,
+  GetUserHiddenPostsInput,
   GetUserPostsInput,
+  GetUserVotedPostsOptions,
   PostResponse,
   UpdatePostInput,
 } from "../../types/inputs";
+import { ConfirmResponse, MyContext } from "../../types/resolvers";
 
 @Resolver()
 export class PostResolver {
@@ -77,12 +91,29 @@ export class PostResolver {
         errors: [{ field: "posts", message: "No posts found" }],
       };
     }
+
+    const resultCount = await ctx.db
+      .select({ count: count() })
+      .from(posts)
+      .where(
+        // Exclude posts where there is a match in hiddenPosts
+        notExists(
+          ctx.db
+            .select()
+            .from(hiddenPosts)
+            .where(
+              and(
+                eq(hiddenPosts.postId, posts.id),
+                eq(hiddenPosts.userId, userId ?? 0)
+              )
+            )
+        )
+      );
     return {
       postsArray: result.map(
         ({
           isUpvoted,
           isDownvoted,
-          postsCount,
           upvotesCount,
           downvotesCount,
           ...post
@@ -93,7 +124,7 @@ export class PostResolver {
           upvotesCount: upvotesCount - downvotesCount,
         })
       ),
-      count: result[0].postsCount,
+      count: resultCount[0].count,
     };
   }
 
@@ -135,12 +166,12 @@ export class PostResolver {
           errors: [{ field: "posts", message: "No posts found" }],
         };
       }
+      const resultCount = await ctx.db.select({ count: count() }).from(posts);
       return {
         postsArray: result.map(
           ({
             isUpvoted,
             isDownvoted,
-            postsCount,
             upvotesCount,
             downvotesCount,
             ...post
@@ -151,7 +182,7 @@ export class PostResolver {
             upvotesCount: upvotesCount - downvotesCount,
           })
         ),
-        count: result[0].postsCount,
+        count: resultCount[0].count,
       };
     }
     // Else, return posts from only the user's communities
@@ -187,18 +218,21 @@ export class PostResolver {
         .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
         .leftJoin(
           communityMembers,
-          eq(posts.communityId, communityMembers.communityId)
+          and(
+            eq(posts.communityId, communityMembers.communityId),
+            eq(communityMembers.userId, userId ?? 0)
+          )
         ) // Join community members to get community member count
         .groupBy(
           posts.id,
           users.id,
           communities.id,
-          communityMembers.communityId
+          communityMembers.communityId,
+          communityMembers.userId
         ) // Group by to avoid duplicates
         .orderBy(postsSorter(sortBy ?? "Best"))
         .limit(limit)
         .offset((page - 1) * limit);
-
       if (!result || result.length === 0) {
         return {
           errors: [
@@ -209,12 +243,34 @@ export class PostResolver {
           ],
         };
       }
+      const resultCount = await ctx.db
+        .select({ count: count() })
+        .from(posts)
+        .leftJoin(
+          hiddenPosts,
+          and(eq(hiddenPosts.postId, posts.id), eq(hiddenPosts.userId, userId))
+        )
+        .where(
+          and(
+            isNull(hiddenPosts.postId), // Exclude hidden posts
+            exists(
+              ctx.db
+                .select()
+                .from(communityMembers)
+                .where(
+                  and(
+                    eq(communityMembers.userId, userId),
+                    eq(communityMembers.communityId, posts.communityId)
+                  )
+                )
+            )
+          )
+        );
       return {
         postsArray: result.map(
           ({
             isUpvoted,
             isDownvoted,
-            postsCount,
             upvotesCount,
             downvotesCount,
             ...post
@@ -225,7 +281,7 @@ export class PostResolver {
             upvotesCount: upvotesCount - downvotesCount,
           })
         ),
-        count: result[0].postsCount,
+        count: resultCount[0].count,
       };
     }
   }
@@ -283,7 +339,22 @@ export class PostResolver {
     const result = await ctx.db
       .select(communityPostSelection({ ctx, userId, communityId }))
       .from(posts)
-      .where(eq(posts.communityId, communityId))
+      .where(
+        and(
+          eq(posts.communityId, communityId),
+          notExists(
+            ctx.db
+              .select()
+              .from(hiddenPosts)
+              .where(
+                and(
+                  eq(hiddenPosts.postId, posts.id),
+                  eq(hiddenPosts.userId, userId ?? 0)
+                )
+              )
+          )
+        )
+      )
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
       .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
       .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
@@ -393,13 +464,34 @@ export class PostResolver {
         ],
       };
     }
+    const count = await ctx.db
+      .select({ count: ctx.db.$count(posts) })
+      .from(posts)
+      .where(
+        and(
+          or(
+            ilike(posts.content, "%" + searchTerm + "%"),
+            ilike(posts.title, "%" + searchTerm + "%")
+          ), // Exclude hidden posts
+          notExists(
+            ctx.db
+              .select()
+              .from(hiddenPosts)
+              .where(
+                and(
+                  eq(hiddenPosts.postId, posts.id),
+                  eq(hiddenPosts.userId, userId ?? 0)
+                )
+              )
+          )
+        )
+      );
     // Return posts array
     return {
       postsArray: result.map(
         ({
           isUpvoted,
           isDownvoted,
-          postsCount,
           upvotesCount,
           downvotesCount,
           ...post
@@ -410,7 +502,7 @@ export class PostResolver {
           upvotesCount: upvotesCount - downvotesCount,
         })
       ),
-      count: result[0].totalCount,
+      count: count[0].count,
     };
   }
 
@@ -422,21 +514,21 @@ export class PostResolver {
     @Arg("options") options: GetUserPostsInput
   ): Promise<PostResponse> {
     // Destructure input
-    const { userId, page, limit } = options;
+    const { userId, page, limit, sortBy = "New" } = options;
     const authorId = userId ? userId : ctx.req.session.userId;
     if (!authorId) {
       return {
         errors: [
           {
             field: "authorId",
-            message: "You must be logged in to get your posts",
+            message: "Please provide a user id to get his posts",
           },
         ],
       };
     }
     // Fetch all posts from database
     const allPosts = await ctx.db
-      .select(postSelection({ ctx, userId: authorId }))
+      .select(userPostsSelection({ ctx, userId: authorId }))
       .from(posts)
       .where(eq(posts.authorId, authorId))
       .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
@@ -450,7 +542,7 @@ export class PostResolver {
       .groupBy(posts.id, users.id, communities.id, communityMembers.communityId) // Group by to avoid duplicates
       .limit(limit)
       .offset((page - 1) * limit)
-      .orderBy(desc(posts.createdAt));
+      .orderBy(postsSorter(sortBy));
     // Handle not found error
     if (!allPosts || allPosts.length === 0) {
       return {
@@ -480,6 +572,154 @@ export class PostResolver {
         })
       ),
       count: allPosts[0].postsCount,
+    };
+  }
+
+  // Query to get the user's hidden posts
+  @Query(() => PostResponse)
+  async getUserHiddenPosts(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetUserHiddenPostsInput
+  ): Promise<PostResponse> {
+    // Destructure input
+    const { page, limit, sortBy } = options;
+    // Get user id from session
+    const userId = ctx.req.session.userId;
+    if (!userId) {
+      return {
+        errors: [
+          {
+            field: "root",
+            message: "You must be logged in to get your hidden posts",
+          },
+        ],
+      };
+    }
+    // Fetch posts with author, upvote count, user upvoted status, and comment count
+    const result = await ctx.db
+      .select(hiddenPostSelection({ ctx, userId }))
+      .from(posts)
+      .where(
+        and(eq(posts.id, hiddenPosts.postId), eq(hiddenPosts.userId, userId))
+      )
+      .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+      .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+      .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+      .leftJoin(
+        communityMembers,
+        eq(posts.communityId, communityMembers.communityId)
+      ) // Join community members to get community member count
+      .leftJoin(hiddenPosts, eq(posts.id, hiddenPosts.postId)) // Join hidden posts to get hidden post
+      .groupBy(posts.id, users.id, communities.id, communityMembers.communityId) // Group by to avoid duplicates
+      .orderBy(postsSorter(sortBy ?? "Best"))
+      .limit(limit)
+      .offset((page - 1) * limit);
+    // Handle not found error
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "posts",
+            message: "No hidden posts found",
+          },
+        ],
+      };
+    }
+    // Return posts array
+    return {
+      postsArray: result.map(
+        ({
+          isUpvoted,
+          isDownvoted,
+          postsCount,
+          upvotesCount,
+          downvotesCount,
+          ...post
+        }) => ({
+          ...post,
+          isUpvoted:
+            isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+          upvotesCount: upvotesCount - downvotesCount,
+        })
+      ),
+      count: result[0].postsCount,
+    };
+  }
+  // Query to get all posts the user has upvoted or downvoted
+  @Query(() => PostResponse)
+  async getUserVotedPosts(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetUserVotedPostsOptions
+  ): Promise<PostResponse> {
+    // Destructure options
+    const { sortBy, limit, page, isUpvoted } = options;
+    // Check if user is logged in
+    const userId = ctx.req.session.userId;
+    if (!userId) {
+      return {
+        errors: [
+          {
+            field: "userId",
+            message: "You must be logged in to get your votes",
+          },
+        ],
+      };
+    }
+    // Fetch all upvoted posts from database
+    const result = await ctx.db
+      .select(votedPostSelection({ ctx, userId, isUpvoted }))
+      .from(posts)
+      .where(
+        and(
+          eq(posts.id, votes.postId),
+          eq(votes.userId, userId),
+          eq(votes.isUpvote, isUpvoted)
+        )
+      )
+      .leftJoin(users, eq(posts.authorId, users.id)) // Join users table to get author details
+      .leftJoin(votes, eq(posts.id, votes.postId)) // Join votes to get upvote count
+      .leftJoin(comments, eq(posts.id, comments.postId)) // Join comments to get comment count
+      .leftJoin(communities, eq(posts.communityId, communities.id)) // Join communities to get community details
+      .leftJoin(
+        communityMembers,
+        eq(posts.communityId, communityMembers.communityId)
+      ) // Join community members to get community member count
+      .leftJoin(hiddenPosts, eq(posts.id, hiddenPosts.postId)) // Join hidden posts to get hidden post
+      .groupBy(posts.id, users.id, communities.id, communityMembers.communityId) // Group by to avoid duplicates
+      .orderBy(postsSorter(sortBy ?? "Best"))
+      .limit(limit)
+      .offset((page - 1) * limit);
+    // Handle not found error
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "votes",
+            message: "No votes found",
+          },
+        ],
+      };
+    }
+
+    // Return votes array
+    return {
+      postsArray: result.map(
+        ({
+          isUpvoted,
+          isDownvoted,
+          postsCount,
+          upvotesCount,
+          downvotesCount,
+          ...post
+        }) => ({
+          ...post,
+          isUpvoted:
+            isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+          upvotesCount: upvotesCount - downvotesCount,
+        })
+      ),
+      count: result[0].postsCount,
     };
   }
 

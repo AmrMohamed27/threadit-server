@@ -1,3 +1,5 @@
+import argon2 from "argon2";
+import { asc, count, eq, ilike } from "drizzle-orm";
 import {
   Arg,
   Ctx,
@@ -9,15 +11,14 @@ import {
   Query,
   Resolver,
 } from "type-graphql";
-import { ReturnedUser, users } from "../../database/schema";
-import { User } from "../types/User";
-import argon2 from "argon2";
-import { eq } from "drizzle-orm";
-import { ConfirmResponse, FieldError, MyContext } from "../../types/resolvers";
-import { env } from "../../env";
 import { v4 as uuidv4 } from "uuid";
-import { sendEmail } from "../../email/emailService";
+import { ReturnedUser, users } from "../../database/schema";
 import { checkMXRecords } from "../../email/checkMXRecords";
+import { sendEmail } from "../../email/emailService";
+import { env } from "../../env";
+import { GetSearchResultInput, UpdateUserImageInput, UpdateUserNameInput } from "../../types/inputs";
+import { ConfirmResponse, FieldError, MyContext } from "../../types/resolvers";
+import { User } from "../types/User";
 
 // Register input type
 @InputType()
@@ -63,8 +64,12 @@ class CheckTokenInput {
 class UserResponse {
   @Field(() => User, { nullable: true })
   user?: ReturnedUser;
+  @Field(() => [User], { nullable: true })
+  userArray?: ReturnedUser[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
+  @Field(() => Int, { nullable: true })
+  count?: number;
 }
 
 // Function to handle register errors
@@ -544,5 +549,155 @@ export class UserResolver {
     return {
       user: result[0],
     };
+  }
+
+  // Query to search for a user with a search term
+  @Query(() => UserResponse)
+  async searchForUser(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: GetSearchResultInput
+  ) {
+    // Destructure input
+    const { searchTerm, page, limit } = options;
+    // Fetch users from database
+    const result = await ctx.db
+      .select()
+      .from(users)
+      .where(ilike(users.name, "%" + searchTerm + "%"))
+      .limit(limit)
+      .offset((page - 1) * limit)
+      .orderBy(asc(users.name));
+    // Handle not found error
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "posts",
+            message: "No users found",
+          },
+        ],
+      };
+    }
+    const resultCount = await ctx.db
+      .select({ count: count() })
+      .from(users)
+      .where(ilike(users.name, "%" + searchTerm + "%"));
+    // Return users
+    return {
+      userArray: result,
+      count: resultCount[0].count,
+    };
+  }
+
+  // Get user by name
+  @Query(() => UserResponse)
+  async getUserByName(
+    @Ctx() ctx: MyContext,
+    @Arg("name", () => String) name: string
+  ) {
+    // Fetch user by name from database
+    const result = await ctx.db
+      .select()
+      .from(users)
+      .where(eq(users.name, name));
+    // Handle not found error
+    if (!result || result.length === 0) {
+      return {
+        errors: [
+          {
+            field: "name",
+            message: "No user found with that name",
+          },
+        ],
+      };
+    }
+    // Return user
+    return {
+      user: result[0],
+    };
+  }
+
+  // Update user profile picture
+  @Mutation(() => ConfirmResponse)
+  async updateUserImage(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: UpdateUserImageInput
+  ): Promise<ConfirmResponse> {
+    // Destructure email and password from userData
+    const { image } = options;
+    // Get user id from session
+    const userId = ctx.req.session.userId;
+    // Check if user is logged in
+    if (!userId) {
+      return {
+        success: false,
+        errors: [
+          {
+            field: "root",
+            message: "You must be logged in to update a user",
+          },
+        ],
+      };
+    }
+    // Update user's image
+    try {
+      await ctx.db.update(users).set({ image }).where(eq(users.id, userId));
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error(error);
+      return {
+        success: false,
+        errors: [
+          {
+            field: "root",
+            message: error.message,
+          },
+        ],
+      };
+    }
+  }
+
+  // Update user name
+  @Mutation(() => ConfirmResponse)
+  async updateUserName(
+    @Ctx() ctx: MyContext,
+    @Arg("options") options: UpdateUserNameInput
+  ): Promise<ConfirmResponse> {
+    // Destructure email and password from userData
+    const { name } = options;
+    // Get user id from session
+    const userId = ctx.req.session.userId;
+    // Check if user is logged in
+    if (!userId) {
+      return {
+        success: false,
+        errors: [
+          {
+            field: "root",
+            message: "You must be logged in to update a user",
+          },
+        ],
+      };
+    }
+    // Update user's name
+    try {
+      await ctx.db.update(users).set({ name }).where(eq(users.id, userId));
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error(error);
+      return {
+        success: false,
+        errors: [
+          {
+            field: "root",
+            message: error.message,
+          },
+        ],
+      };
+    }
   }
 }
