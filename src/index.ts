@@ -12,6 +12,7 @@ import { redisClient, redisStore } from "./redis";
 import { __prod__, env } from "./env";
 import { db } from "./database/db";
 import { MyContext } from "./types/resolvers";
+import { Services } from "./service";
 
 // Start Apollo Server
 export async function startServer() {
@@ -55,8 +56,9 @@ export async function startServer() {
       context: async ({ req, res }): Promise<MyContext> => ({
         req,
         res,
-        db,
         redis: redisClient,
+        Services: Services,
+        db,
       }),
     })
   );

@@ -1,15 +1,5 @@
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  exists,
-  ilike,
-  notExists,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, desc, eq, notExists, sql } from "drizzle-orm";
+import { db } from "../database/db";
 import {
   comments,
   communities,
@@ -20,11 +10,14 @@ import {
   users,
   votes,
 } from "../database/schema";
-import { ExtendedComment } from "../types/inputs";
+import { ExtendedComment, ExtendedPost } from "../types/inputs";
 import {
-  searchSelectionProps,
+  CommentQueryResult,
+  newSelectionProps,
+  PostQueryResult,
   selectionProps,
   SortOptions,
+  VoteOptions,
 } from "../types/resolvers";
 
 // Helper function to build a nested comment structure
@@ -41,6 +34,7 @@ export const buildCommentThread = (
 
   // Assign replies to their parents
   comments.forEach((comment) => {
+    // flag to determine if we reached max depth
     let flag = false;
     if (comment.parentCommentId) {
       const parent = commentMap[comment.parentCommentId];
@@ -65,7 +59,7 @@ export const buildCommentThread = (
   return rootComments;
 };
 
-export const postSelection = ({ ctx, userId }: selectionProps) => ({
+export const postSelection = ({ userId }: newSelectionProps) => ({
   id: posts.id,
   title: posts.title,
   content: posts.content,
@@ -93,27 +87,27 @@ export const postSelection = ({ ctx, userId }: selectionProps) => ({
     updatedAt: communities.updatedAt,
     creatorId: communities.creatorId,
     isPrivate: communities.isPrivate,
-    membersCount: ctx.db.$count(
+    membersCount: db.$count(
       communityMembers,
       eq(communityMembers.communityId, posts.communityId)
     ),
-    postsCount: ctx.db.$count(
+    postsCount: db.$count(
       posts,
       eq(posts.communityId, communityMembers.communityId)
     ),
   },
   // Upvote Count
-  upvotesCount: ctx.db.$count(
+  upvotesCount: db.$count(
     votes,
     and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
   ),
   // Downvote Count
-  downvotesCount: ctx.db.$count(
+  downvotesCount: db.$count(
     votes,
     and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
   ),
   // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
+  isUpvoted: db.$count(
     votes,
     and(
       eq(votes.postId, posts.id),
@@ -122,7 +116,7 @@ export const postSelection = ({ ctx, userId }: selectionProps) => ({
     )
   ),
   // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
+  isDownvoted: db.$count(
     votes,
     and(
       eq(votes.postId, posts.id),
@@ -131,359 +125,7 @@ export const postSelection = ({ ctx, userId }: selectionProps) => ({
     )
   ),
   // Comment Count
-  commentsCount: ctx.db.$count(comments, eq(comments.postId, posts.id)),
-});
-export const userPostsSelection = ({ ctx, userId }: selectionProps) => ({
-  id: posts.id,
-  title: posts.title,
-  content: posts.content,
-  createdAt: posts.createdAt,
-  updatedAt: posts.updatedAt,
-  authorId: posts.authorId,
-  communityId: posts.communityId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Community Details
-  community: {
-    id: communities.id,
-    name: communities.name,
-    description: communities.description,
-    image: communities.image,
-    createdAt: communities.createdAt,
-    updatedAt: communities.updatedAt,
-    creatorId: communities.creatorId,
-    isPrivate: communities.isPrivate,
-    membersCount: ctx.db.$count(
-      communityMembers,
-      eq(communityMembers.communityId, posts.communityId)
-    ),
-    postsCount: ctx.db.$count(
-      posts,
-      eq(posts.communityId, communityMembers.communityId)
-    ),
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comment Count
-  commentsCount: ctx.db.$count(comments, eq(comments.postId, posts.id)),
-  // Posts count
-  postsCount: ctx.db.$count(
-    posts,
-    and(
-      notExists(
-        ctx.db
-          .select()
-          .from(hiddenPosts)
-          .where(
-            and(
-              eq(hiddenPosts.postId, posts.id),
-              eq(hiddenPosts.userId, userId ?? 0)
-            )
-          )
-      ),
-      eq(posts.authorId, userId ?? 0)
-    )
-  ),
-});
-export const hiddenPostSelection = ({ ctx, userId }: selectionProps) => ({
-  id: posts.id,
-  title: posts.title,
-  content: posts.content,
-  createdAt: posts.createdAt,
-  updatedAt: posts.updatedAt,
-  authorId: posts.authorId,
-  communityId: posts.communityId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Community Details
-  community: {
-    id: communities.id,
-    name: communities.name,
-    description: communities.description,
-    image: communities.image,
-    createdAt: communities.createdAt,
-    updatedAt: communities.updatedAt,
-    creatorId: communities.creatorId,
-    isPrivate: communities.isPrivate,
-    membersCount: ctx.db.$count(
-      communityMembers,
-      eq(communityMembers.communityId, posts.communityId)
-    ),
-    postsCount: ctx.db.$count(
-      posts,
-      eq(posts.communityId, communityMembers.communityId)
-    ),
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comment Count
-  commentsCount: ctx.db.$count(comments, eq(comments.postId, posts.id)),
-  // Posts count
-  postsCount: ctx.db.$count(
-    posts,
-    exists(
-      ctx.db
-        .select()
-        .from(hiddenPosts)
-        .where(
-          and(
-            eq(hiddenPosts.postId, posts.id),
-            eq(hiddenPosts.userId, userId ?? 0)
-          )
-        )
-    )
-  ),
-});
-export const votedPostSelection = ({
-  ctx,
-  userId,
-  isUpvoted,
-}: selectionProps) => ({
-  id: posts.id,
-  title: posts.title,
-  content: posts.content,
-  createdAt: posts.createdAt,
-  updatedAt: posts.updatedAt,
-  authorId: posts.authorId,
-  communityId: posts.communityId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Community Details
-  community: {
-    id: communities.id,
-    name: communities.name,
-    description: communities.description,
-    image: communities.image,
-    createdAt: communities.createdAt,
-    updatedAt: communities.updatedAt,
-    creatorId: communities.creatorId,
-    isPrivate: communities.isPrivate,
-    membersCount: ctx.db.$count(
-      communityMembers,
-      eq(communityMembers.communityId, posts.communityId)
-    ),
-    postsCount: ctx.db.$count(
-      posts,
-      eq(posts.communityId, communityMembers.communityId)
-    ),
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comment Count
-  commentsCount: ctx.db.$count(comments, eq(comments.postId, posts.id)),
-
-  // Posts count
-  postsCount: ctx.db.$count(
-    posts,
-    exists(
-      ctx.db
-        .select()
-        .from(votes)
-        .where(
-          and(
-            eq(votes.postId, posts.id),
-            eq(votes.userId, userId ?? 0),
-            eq(votes.isUpvote, isUpvoted ?? true)
-          )
-        )
-    )
-  ),
-});
-
-export const communityPostSelection = ({
-  ctx,
-  userId,
-  communityId,
-}: selectionProps) => ({
-  id: posts.id,
-  title: posts.title,
-  content: posts.content,
-  createdAt: posts.createdAt,
-  updatedAt: posts.updatedAt,
-  authorId: posts.authorId,
-  communityId: posts.communityId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Community Details
-  community: {
-    id: communities.id,
-    name: communities.name,
-    description: communities.description,
-    image: communities.image,
-    createdAt: communities.createdAt,
-    updatedAt: communities.updatedAt,
-    creatorId: communities.creatorId,
-    isPrivate: communities.isPrivate,
-    membersCount: ctx.db.$count(
-      communityMembers,
-      eq(communityMembers.communityId, posts.communityId)
-    ),
-    postsCount: ctx.db.$count(
-      posts,
-      and(
-        eq(posts.communityId, communityMembers.communityId),
-        eq(posts.communityId, communityId ?? 0)
-      )
-    ),
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comment Count
-  commentsCount: ctx.db.$count(comments, eq(comments.postId, posts.id)),
-  // Posts count
-  count: ctx.db.$count(
-    posts,
-    and(
-      notExists(
-        ctx.db
-          .select()
-          .from(hiddenPosts)
-          .where(
-            and(
-              eq(hiddenPosts.postId, posts.id),
-              eq(hiddenPosts.userId, userId ?? 0)
-            )
-          )
-      ),
-      eq(posts.communityId, communityId ?? 0)
-    )
-  ),
+  commentsCount: db.$count(comments, eq(comments.postId, posts.id)),
 });
 
 export const savedPostSelection = ({ ctx, userId }: selectionProps) => ({
@@ -574,22 +216,6 @@ export const postsSorter = (sortBy: SortOptions) =>
     ? asc(posts.createdAt) // Oldest first
     : desc(posts.createdAt); // Default: sort by newest posts
 
-export const searchSelection = ({
-  ctx,
-  userId,
-  searchTerm,
-}: searchSelectionProps) => ({
-  ...postSelection({ ctx, userId }),
-  totalCount: ctx.db.$count(
-    posts,
-    or(
-      ilike(posts.content, "%" + searchTerm + "%"),
-      ilike(posts.title, "%" + searchTerm + "%")
-    )
-  ),
-});
-
-
 // Selection object for community
 export const communitySelection = ({ ctx, userId }: selectionProps) => ({
   id: communities.id,
@@ -625,19 +251,6 @@ export const communitySelection = ({ ctx, userId }: selectionProps) => ({
   ),
 });
 
-// Selection object for searching communities
-export const searchCommunitySelection = ({
-  ctx,
-  userId,
-  searchTerm,
-}: searchSelectionProps) => ({
-  ...communitySelection({ ctx, userId }),
-  totalCount: ctx.db.$count(
-    communities,
-    ilike(communities.name, "%" + searchTerm + "%")
-  ),
-});
-
 export const commentsSorter = (sortBy: SortOptions) =>
   sortBy === "Best"
     ? desc(
@@ -655,7 +268,7 @@ export const commentsSorter = (sortBy: SortOptions) =>
     ? asc(comments.createdAt) // Oldest first
     : desc(comments.createdAt); // Default: sort by newest comments
 
-export const commentSelection = ({ ctx, userId }: selectionProps) => ({
+export const commentSelection = ({ userId }: newSelectionProps) => ({
   id: comments.id,
   content: comments.content,
   createdAt: comments.createdAt,
@@ -674,17 +287,17 @@ export const commentSelection = ({ ctx, userId }: selectionProps) => ({
     confirmed: users.confirmed,
   },
   // Upvote Count
-  upvotesCount: ctx.db.$count(
+  upvotesCount: db.$count(
     votes,
     and(eq(votes.commentId, comments.id), eq(votes.isUpvote, true))
   ),
   // Downvote Count
-  downvotesCount: ctx.db.$count(
+  downvotesCount: db.$count(
     votes,
     and(eq(votes.commentId, comments.id), eq(votes.isUpvote, false))
   ),
   // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
+  isUpvoted: db.$count(
     votes,
     and(
       eq(votes.commentId, comments.id),
@@ -693,67 +306,81 @@ export const commentSelection = ({ ctx, userId }: selectionProps) => ({
     )
   ),
   // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
+  isDownvoted: db.$count(
     votes,
     and(
       eq(votes.commentId, comments.id),
       eq(votes.userId, userId ?? 0),
       eq(votes.isUpvote, false)
     )
-  ),
-  // Comments count
-  commentsCount: ctx.db.$count(
-    comments,
-    eq(comments.parentCommentId, comments.id ?? 0)
   ),
 });
 
-export const userCommentsSelection = ({ ctx, userId }: selectionProps) => ({
-  id: comments.id,
-  content: comments.content,
-  createdAt: comments.createdAt,
-  updatedAt: comments.updatedAt,
-  authorId: comments.authorId,
-  postId: comments.postId,
-  parentCommentId: comments.parentCommentId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.commentId, comments.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.commentId, comments.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.commentId, comments.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.commentId, comments.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comments count
-  commentsCount: ctx.db.$count(comments, eq(comments.authorId, userId ?? 0)),
-});
+export const mapPostArrayResult = (
+  posts: PostQueryResult[]
+): ExtendedPost[] => {
+  return posts.map(
+    ({ isUpvoted, isDownvoted, upvotesCount, downvotesCount, ...post }) => ({
+      ...post,
+      isUpvoted:
+        isUpvoted > 0 ? "upvote" : isDownvoted > 0 ? "downvote" : "none",
+      upvotesCount: upvotesCount - downvotesCount,
+    })
+  );
+};
+
+export const mapSinglePostResult = (post: PostQueryResult): ExtendedPost => {
+  return {
+    ...post,
+    isUpvoted:
+      post.isUpvoted > 0
+        ? "upvote"
+        : post.isDownvoted > 0
+        ? "downvote"
+        : "none",
+    upvotesCount: post.upvotesCount - post.downvotesCount,
+  };
+};
+
+export const excludeHiddenPosts = (userId: number) =>
+  notExists(
+    db
+      .select()
+      .from(hiddenPosts)
+      .where(
+        and(
+          eq(hiddenPosts.postId, posts.id),
+          eq(hiddenPosts.userId, userId ?? 0)
+        )
+      )
+  );
+
+export const mapCommentArrayResult = (
+  comments: CommentQueryResult[]
+): ExtendedComment[] => {
+  return comments.map(
+    ({ isUpvoted, isDownvoted, upvotesCount, downvotesCount, ...comment }) => ({
+      ...comment,
+      isUpvoted: (isUpvoted > 0
+        ? "upvote"
+        : isDownvoted > 0
+        ? "downvote"
+        : "none") as VoteOptions,
+      upvotesCount: upvotesCount - downvotesCount,
+    })
+  );
+};
+
+export const mapSingleCommentResult = (
+  comment: CommentQueryResult
+): ExtendedComment => {
+  return {
+    ...comment,
+    isUpvoted: (comment.isUpvoted > 0
+      ? "upvote"
+      : comment.isDownvoted > 0
+      ? "downvote"
+      : "none") as VoteOptions,
+    upvotesCount: comment.upvotesCount - comment.downvotesCount,
+  };
+};

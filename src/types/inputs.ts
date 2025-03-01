@@ -10,7 +10,7 @@ import { Post } from "../graphql/types/Post";
 import { Community } from "../graphql/types/Community";
 import { Comment } from "../graphql/types/Comment";
 
-export type extendedPost = ReturnedPost & {
+export type ExtendedPost = ReturnedPost & {
   upvotesCount?: number;
   commentsCount?: number;
   isUpvoted?: VoteOptions;
@@ -21,9 +21,9 @@ export type extendedPost = ReturnedPost & {
 @ObjectType()
 export class PostResponse {
   @Field(() => Post, { nullable: true })
-  post?: extendedPost;
+  post?: ExtendedPost;
   @Field(() => [Post], { nullable: true })
-  postsArray?: extendedPost[];
+  postsArray?: ExtendedPost[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
   @Field(() => Int, { nullable: true })
@@ -162,6 +162,7 @@ export class UpdateUserImageInput {
 // Extended comment response type
 export type ExtendedComment = ReturnedComment & {
   upvotesCount?: number;
+  downvotesCount?: number;
   isUpvoted?: VoteOptions;
   author?: ReturnedUserWithoutPassword | null;
   replies?: ExtendedComment[];
@@ -184,8 +185,6 @@ export class CommentResponse {
 export class GetCommentByIdInput {
   @Field(() => Int)
   commentId: number;
-  @Field(() => Int, { nullable: true })
-  postId?: number;
 }
 
 // Create Comment Input Type

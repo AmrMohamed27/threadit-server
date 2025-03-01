@@ -6,7 +6,7 @@ import {
   posts,
   users,
 } from "../../database/schema";
-import { communitySelection, searchCommunitySelection } from "../../lib/utils";
+import { communitySelection } from "../../lib/utils";
 import {
   CommunityResponse,
   CreateCommunityInput,
@@ -282,7 +282,7 @@ export class CommunityResolver {
       const newCommunity = await ctx.db
         .insert(communities)
         .values({ name, description, image, creatorId, isPrivate })
-      .returning();
+        .returning();
       // handle creation error
       if (!newCommunity || newCommunity.length === 0) {
         return {
