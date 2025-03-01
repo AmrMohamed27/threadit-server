@@ -28,7 +28,7 @@ export class CommentService {
     });
     if (!result || result.length === 0) {
       return {
-        errors: [{ field: "comments", message: "No comments found" }],
+        errors: [{ field: "comments", message: "w comments found" }],
       };
     }
     const resultCount = await this.repository.countAllCommentsWithFilters({
@@ -40,7 +40,7 @@ export class CommentService {
     };
   }
 
-  async getUserComments({
+  async fetchUserComments({
     userId,
     sortBy,
     limit,
@@ -84,7 +84,7 @@ export class CommentService {
     };
   }
 
-  async getPostComments({
+  async fetchPostComments({
     postId,
     sortBy,
     searchTerm,
@@ -132,7 +132,7 @@ export class CommentService {
     }
   }
 
-  async getCommentById({
+  async fetchCommentById({
     commentId,
     userId,
   }: {

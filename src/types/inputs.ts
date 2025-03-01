@@ -257,3 +257,17 @@ export class UpdateUserNameInput {
   @Field()
   name: string;
 }
+
+// Input type for joining a community
+@InputType()
+export class JoinCommunityInput {
+  @Field()
+  communityId: number;
+}
+
+// Input type for leaving a community
+@InputType()
+export class LeaveCommunityInput {
+  @Field()
+  communityId: number;
+}

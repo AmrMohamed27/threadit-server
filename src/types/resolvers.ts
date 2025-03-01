@@ -124,3 +124,27 @@ export interface CommentQueryResult {
   isUpvoted: number;
   isDownvoted: number;
 }
+
+export interface CommunityQueryResult {
+  id: number;
+  name: string;
+  description: string | null;
+  image: string | null;
+  cover: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  creatorId: number;
+  isPrivate: boolean | null;
+  postsCount: number;
+  membersCount: number;
+  creator: {
+    id: number;
+    name: string;
+    image: string | null;
+    email: string;
+    createdAt: Date | null;
+    updatedAt: Date | null;
+    confirmed: boolean;
+  } | null;
+  isJoined: number;
+}

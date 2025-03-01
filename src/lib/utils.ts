@@ -10,9 +10,14 @@ import {
   users,
   votes,
 } from "../database/schema";
-import { ExtendedComment, ExtendedPost } from "../types/inputs";
+import {
+  ExtendedComment,
+  extendedCommunity,
+  ExtendedPost,
+} from "../types/inputs";
 import {
   CommentQueryResult,
+  CommunityQueryResult,
   newSelectionProps,
   PostQueryResult,
   selectionProps,
@@ -217,7 +222,7 @@ export const postsSorter = (sortBy: SortOptions) =>
     : desc(posts.createdAt); // Default: sort by newest posts
 
 // Selection object for community
-export const communitySelection = ({ ctx, userId }: selectionProps) => ({
+export const communitySelection = ({ userId }: newSelectionProps) => ({
   id: communities.id,
   name: communities.name,
   description: communities.description,
@@ -228,8 +233,8 @@ export const communitySelection = ({ ctx, userId }: selectionProps) => ({
   creatorId: communities.creatorId,
   isPrivate: communities.isPrivate,
   // Additional Fields
-  postsCount: ctx.db.$count(posts, eq(posts.communityId, communities.id)),
-  membersCount: ctx.db.$count(
+  postsCount: db.$count(posts, eq(posts.communityId, communities.id)),
+  membersCount: db.$count(
     communityMembers,
     eq(communityMembers.communityId, communities.id)
   ),
@@ -242,7 +247,7 @@ export const communitySelection = ({ ctx, userId }: selectionProps) => ({
     updatedAt: users.updatedAt,
     confirmed: users.confirmed,
   },
-  isJoined: ctx.db.$count(
+  isJoined: db.$count(
     communityMembers,
     and(
       eq(communities.id, communityMembers.communityId),
@@ -383,4 +388,13 @@ export const mapSingleCommentResult = (
       : "none") as VoteOptions,
     upvotesCount: comment.upvotesCount - comment.downvotesCount,
   };
+};
+
+export const mapCommunitiesResult = (
+  communities: CommunityQueryResult[]
+): extendedCommunity[] => {
+  return communities.map((c) => ({
+    ...c,
+    isJoined: c.isJoined > 0,
+  }));
 };

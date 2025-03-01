@@ -22,7 +22,7 @@ export class CommentResolver {
     const { userId: passedUserId, sortBy, page, limit } = options;
     const loggedInUserId = ctx.req.session.userId;
     const userId = passedUserId ? passedUserId : loggedInUserId;
-    return await ctx.Services.comments.getUserComments({
+    return await ctx.Services.comments.fetchUserComments({
       userId,
       sortBy,
       limit,
@@ -40,7 +40,7 @@ export class CommentResolver {
     const { postId, sortBy, searchTerm } = options;
     // Get user id from session
     const userId = ctx.req.session.userId;
-    return await ctx.Services.comments.getPostComments({
+    return await ctx.Services.comments.fetchPostComments({
       userId,
       sortBy,
       searchTerm,
@@ -58,7 +58,7 @@ export class CommentResolver {
     const { commentId } = options;
     // Get user id from session
     const userId = ctx.req.session.userId;
-    return await ctx.Services.comments.getCommentById({
+    return await ctx.Services.comments.fetchCommentById({
       userId,
       commentId,
     });
