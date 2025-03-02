@@ -14,6 +14,7 @@ import {
   ExtendedComment,
   extendedCommunity,
   ExtendedPost,
+  UserResponse,
 } from "../types/inputs";
 import {
   CommentQueryResult,
@@ -398,3 +399,38 @@ export const mapCommunitiesResult = (
     isJoined: c.isJoined > 0,
   }));
 };
+
+// Function to handle register errors
+export function registerErrorHandler(error: any): UserResponse {
+  // Duplicate email error
+  if (error.constraint === "users_email_unique") {
+    return {
+      errors: [
+        {
+          field: "email",
+          message: "A user with this email already exists",
+        },
+      ],
+    };
+  }
+  // Duplicate username error
+  if (error.constraint === "users_name_unique") {
+    return {
+      errors: [
+        {
+          field: "name",
+          message: "A user with this username already exists",
+        },
+      ],
+    };
+  }
+  //   Generic error
+  return {
+    errors: [
+      {
+        field: "root",
+        message: error.message,
+      },
+    ],
+  };
+}

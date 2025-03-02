@@ -10,6 +10,10 @@ import { HiddenPostsService } from "./HiddenPostsService";
 import { HiddenPostsRepository } from "../repositories/HiddenPostsRepository";
 import { SavedPostsService } from "./SavedPostsService";
 import { SavedPostsRepository } from "../repositories/SavedPostsRepository";
+import { UserService } from "./UserService";
+import { UserRepository } from "../repositories/UserRepository";
+import { VoteService } from "./VoteService";
+import { VoteRepository } from "../repositories/VoteRepository";
 
 export const Services = {
   posts: new PostService(PostRepository),
@@ -18,4 +22,6 @@ export const Services = {
   communities: new CommunityService(CommunityRepository),
   hiddenPosts: new HiddenPostsService(HiddenPostsRepository),
   savedPosts: new SavedPostsService(SavedPostsRepository),
+  users: new UserService(UserRepository),
+  votes: new VoteService(VoteRepository, PostRepository, CommentRepository),
 };

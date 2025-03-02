@@ -2,13 +2,17 @@ import {
   ReturnedComment,
   ReturnedCommunity,
   ReturnedPost,
+  ReturnedUser,
   ReturnedUserWithoutPassword,
+  ReturnedVote,
 } from "../database/schema";
 import { FieldError, SortOptions, VoteOptions } from "./resolvers";
 import { Field, InputType, Int, ObjectType } from "type-graphql";
 import { Post } from "../graphql/types/Post";
 import { Community } from "../graphql/types/Community";
 import { Comment } from "../graphql/types/Comment";
+import { User } from "../graphql/types/User";
+import { Vote } from "../graphql/types/Vote";
 
 export type ExtendedPost = ReturnedPost & {
   upvotesCount?: number;
@@ -270,4 +274,98 @@ export class JoinCommunityInput {
 export class LeaveCommunityInput {
   @Field()
   communityId: number;
+}
+
+// Register input type
+@InputType()
+export class RegisterInput {
+  @Field()
+  name: string;
+  @Field()
+  email: string;
+  @Field()
+  password: string;
+}
+
+// Login Input type
+@InputType()
+export class LoginInput {
+  @Field()
+  email: string;
+  @Field()
+  password: string;
+}
+
+// Reset password input type
+@InputType()
+export class ResetPasswordInput {
+  @Field()
+  newPassword: string;
+  @Field()
+  token: string;
+  @Field()
+  email: string;
+}
+
+@InputType()
+export class CheckTokenInput {
+  @Field()
+  token: string;
+  @Field()
+  email: string;
+}
+
+// Login Return Type
+@ObjectType()
+export class UserResponse {
+  @Field(() => User, { nullable: true })
+  user?: ReturnedUser;
+  @Field(() => [User], { nullable: true })
+  userArray?: ReturnedUser[];
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
+  @Field(() => Int, { nullable: true })
+  count?: number;
+}
+
+// Vote Response type
+@ObjectType()
+export class VoteResponse {
+  @Field(() => Vote, { nullable: true })
+  vote?: ReturnedVote;
+  @Field(() => [Vote], { nullable: true })
+  votesArray?: ReturnedVote[];
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
+}
+// Posts and Comments Response Type
+// Create Vote Input Type
+@InputType()
+export class CreateVoteInput {
+  @Field({ nullable: true })
+  postId?: number;
+  @Field({ nullable: true })
+  commentId?: number;
+  @Field()
+  isUpvote: boolean;
+}
+
+// Update Vote Input Type
+@InputType()
+export class UpdateVoteInput {
+  @Field(() => Int, { nullable: true })
+  postId?: number;
+  @Field(() => Int, { nullable: true })
+  commentId?: number;
+  @Field()
+  isUpvote: boolean;
+}
+
+// Delete Vote Options Type
+@InputType()
+export class DeleteVoteOptions {
+  @Field(() => Int, { nullable: true })
+  postId?: number;
+  @Field(() => Int, { nullable: true })
+  commentId?: number;
 }

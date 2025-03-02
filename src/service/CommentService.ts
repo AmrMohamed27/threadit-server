@@ -28,7 +28,7 @@ export class CommentService {
     });
     if (!result || result.length === 0) {
       return {
-        errors: [{ field: "comments", message: "w comments found" }],
+        errors: [{ field: "comments", message: "no comments found" }],
       };
     }
     const resultCount = await this.repository.countAllCommentsWithFilters({
