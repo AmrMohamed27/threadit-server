@@ -4,15 +4,17 @@ import {
   mapSinglePostResult,
 } from "../lib/utils";
 import { PostResponse } from "../types/inputs";
-import { and, eq, ilike, or, SQL } from "drizzle-orm";
+import { and, eq, exists, ilike, or, SQL } from "drizzle-orm";
 import {
   communityMembers,
   hiddenPosts,
   posts,
+  savedPosts,
   votes,
 } from "../database/schema";
 import { PostRepository } from "../repositories/PostRespository";
 import { ConfirmResponse, SortOptions } from "../types/resolvers";
+import { db } from "../database/db";
 
 export class PostService {
   constructor(private repository: typeof PostRepository) {}
@@ -322,6 +324,50 @@ export class PostService {
       userId,
       filters,
       votesOnly: true,
+    });
+  }
+
+  async fetchUserSavedPosts({
+    userId,
+    page,
+    limit,
+    sortBy,
+  }: {
+    userId?: number;
+    page: number;
+    limit: number;
+    sortBy?: SortOptions;
+  }): Promise<PostResponse> {
+    // check if user is logged in
+    if (!userId) {
+      return {
+        errors: [
+          {
+            field: "root",
+            message: "You must be logged in to get your saved posts",
+          },
+        ],
+      };
+    }
+    const filters: SQL[] = [
+      exists(
+        db
+          .select()
+          .from(savedPosts)
+          .where(
+            and(
+              eq(savedPosts.postId, posts.id),
+              eq(savedPosts.userId, userId ?? 0)
+            )
+          )
+      ),
+    ];
+    return await this.postsFetcher({
+      sortBy,
+      filters,
+      limit,
+      page,
+      userId,
     });
   }
 

@@ -45,7 +45,7 @@ export async function startServer() {
       saveUninitialized: false, // only save session when data exists
       secret: env.REDIS_SECRET,
       cookie: {
-        maxAge: 1000 * 60 * 60 * 24, // cookie valid for 1 day
+        maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // cookie valid for 10 years
         httpOnly: true,
         secure: __prod__,
         sameSite: false,
