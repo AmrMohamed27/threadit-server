@@ -73,6 +73,7 @@ export const postSelection = ({ userId }: newSelectionProps) => ({
   updatedAt: posts.updatedAt,
   authorId: posts.authorId,
   communityId: posts.communityId,
+  media: posts.media,
   // Author Details
   author: {
     id: users.id,
@@ -100,6 +101,13 @@ export const postSelection = ({ userId }: newSelectionProps) => ({
     postsCount: db.$count(
       posts,
       eq(posts.communityId, communityMembers.communityId)
+    ),
+    isJoined: db.$count(
+      communityMembers,
+      and(
+        eq(communities.id, communityMembers.communityId),
+        eq(communityMembers.userId, userId ?? 0)
+      )
     ),
   },
   // Upvote Count

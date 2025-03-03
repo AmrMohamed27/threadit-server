@@ -36,6 +36,7 @@ export const posts = pgTable(
     id: serial("id").primaryKey(),
     title: text("title").notNull(),
     content: text("content").notNull(),
+    media: text("media").array(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

@@ -167,7 +167,7 @@ export class PostResolver {
     @Arg("options") options: CreatePostInput
   ): Promise<PostResponse> {
     // Destructure input
-    const { title, content, communityId } = options;
+    const { title, content, communityId, media } = options;
     // Get author id from session
     const authorId = ctx.req.session.userId;
     return await ctx.Services.posts.createPost({
@@ -175,6 +175,7 @@ export class PostResolver {
       content,
       communityId,
       authorId,
+      media,
     });
   }
 

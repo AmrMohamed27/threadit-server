@@ -76,6 +76,8 @@ export class CreatePostInput {
   content: string;
   @Field()
   communityId: number;
+  @Field(() => [String], { nullable: true })
+  media?: string[];
 }
 // Update Post Input Type
 @InputType()

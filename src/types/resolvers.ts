@@ -66,6 +66,7 @@ export interface PostQueryResult {
   updatedAt: Date | null;
   authorId: number;
   communityId: number;
+  media: string[] | null;
 
   // Author Details
   author: {

@@ -376,11 +376,13 @@ export class PostService {
     content,
     communityId,
     authorId,
+    media,
   }: {
     title: string;
     content: string;
     communityId: number;
     authorId?: number;
+    media?: string[];
   }): Promise<PostResponse> {
     // Check if user is logged in
     if (!authorId) {
@@ -398,6 +400,7 @@ export class PostService {
       content,
       authorId,
       communityId,
+      media,
     });
     // handle creation error
     if (!newPost || newPost.length === 0) {

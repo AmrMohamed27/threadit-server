@@ -42,4 +42,6 @@ export class Post {
   @Field(() => Int)
   communityId: number;
 
+  @Field(() => [String], { nullable: true })
+  media?: string[];
 }
