@@ -17,6 +17,13 @@ export class MessageResolver {
     });
   }
 
+  // Query to get all the user's chats
+  @Query(() => MessageResponse)
+  async getUserChats(@Ctx() ctx: MyContext): Promise<MessageResponse> {
+    const userId = ctx.req.session.userId;
+    return await ctx.Services.messages.fetchUserChats({ userId });
+  }
+
   // Mutation to create a new message
   @Mutation(() => MessageResponse)
   async createMessage(

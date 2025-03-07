@@ -13,10 +13,12 @@ import {
 import {
   ExtendedComment,
   extendedCommunity,
+  ExtendedMessage,
   ExtendedPost,
   UserResponse,
 } from "../types/inputs";
 import {
+  Chat,
   CommentQueryResult,
   CommunityQueryResult,
   newSelectionProps,
@@ -404,4 +406,23 @@ export function registerErrorHandler(error: any): UserResponse {
       },
     ],
   };
+}
+
+export function mapMessagesToChat(messages: ExtendedMessage[]): Chat[] {
+  let chats: Chat[] = [];
+  messages.forEach((message) => {
+    const receiver = chats.find(
+      (chat) => chat.receiverId === message.receiverId
+    );
+    if (receiver) {
+      receiver.messages.push(message);
+    } else {
+      chats.push({
+        senderId: message.senderId,
+        receiverId: message.receiverId,
+        messages: [message],
+      });
+    }
+  });
+  return chats;
 }

@@ -3,6 +3,8 @@ import { Services } from "../graphql/service";
 import { Request, Response } from "express";
 import { redisClient } from "src/redis";
 import { ObjectType, Field, registerEnumType } from "type-graphql";
+import { ExtendedMessage } from "./inputs";
+import { Message } from "../graphql/types/Message";
 
 export interface MyContext {
   req: Request;
@@ -148,4 +150,14 @@ export interface CommunityQueryResult {
     confirmed: boolean;
   } | null;
   isJoined: number;
+}
+
+@ObjectType()
+export class Chat {
+  @Field()
+  senderId: number;
+  @Field()
+  receiverId: number;
+  @Field(() => [Message])
+  messages: ExtendedMessage[];
 }

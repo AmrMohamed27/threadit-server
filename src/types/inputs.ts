@@ -7,7 +7,7 @@ import {
   ReturnedUserWithoutPassword,
   ReturnedVote,
 } from "../database/schema";
-import { FieldError, SortOptions, VoteOptions } from "./resolvers";
+import { Chat, FieldError, SortOptions, VoteOptions } from "./resolvers";
 import { Field, InputType, Int, ObjectType } from "type-graphql";
 import { Post } from "../graphql/types/Post";
 import { Community } from "../graphql/types/Community";
@@ -48,6 +48,8 @@ export class MessageResponse {
   message?: ExtendedMessage;
   @Field(() => [Message], { nullable: true })
   messagesArray?: ExtendedMessage[];
+  @Field(() => [Chat], { nullable: true })
+  chats?: Chat[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
   @Field(() => Int, { nullable: true })

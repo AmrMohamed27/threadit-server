@@ -3,6 +3,7 @@ import { MessageRepository } from "../repositories/MessageRepository";
 import { MessageResponse } from "../../types/inputs";
 import { messages } from "../../database/schema";
 import { ConfirmResponse } from "../../types/resolvers";
+import { mapMessagesToChat } from "../../lib/utils";
 
 export class MessageService {
   constructor(private repository: typeof MessageRepository) {}
@@ -55,6 +56,32 @@ export class MessageService {
       )!,
     ];
     return await this.messagesFetcher({ filters });
+  }
+
+  async fetchUserChats({
+    userId,
+  }: {
+    userId?: number;
+  }): Promise<MessageResponse> {
+    // Check if user is logged in
+    if (!userId) {
+      return {
+        errors: [
+          {
+            field: "userId",
+            message: "You must be logged in to get your chats",
+          },
+        ],
+      };
+    }
+    // Get all messages where the user is either sender or receiver
+    const filters: SQL[] = [
+      or(eq(messages.senderId, userId), eq(messages.receiverId, userId))!,
+    ];
+    const { count, messagesArray, errors } = await this.messagesFetcher({
+      filters,
+    });
+    return { count, errors, chats: mapMessagesToChat(messagesArray ?? []) };
   }
 
   async createMessage({
