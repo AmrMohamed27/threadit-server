@@ -420,6 +420,8 @@ export function mapMessagesToChat(messages: ExtendedMessage[]): Chat[] {
       chats.push({
         senderId: message.senderId,
         receiverId: message.receiverId,
+        sender: message.sender,
+        receiver: message.receiver,
         messages: [message],
       });
     }

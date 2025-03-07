@@ -404,3 +404,12 @@ export class CreateMessageInput {
   @Field()
   receiverId: number;
 }
+
+// Update message input type
+@InputType()
+export class UpdateMessageInput {
+  @Field()
+  content: string;
+  @Field(() => Int)
+  messageId: number;
+}

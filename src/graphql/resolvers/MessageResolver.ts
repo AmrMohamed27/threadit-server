@@ -1,5 +1,9 @@
 import { Arg, Ctx, Int, Mutation, Query, Resolver } from "type-graphql";
-import { CreateMessageInput, MessageResponse } from "../../types/inputs";
+import {
+  CreateMessageInput,
+  MessageResponse,
+  UpdateMessageInput,
+} from "../../types/inputs";
 import { ConfirmResponse, MyContext } from "../../types/resolvers";
 
 @Resolver()
@@ -45,10 +49,11 @@ export class MessageResolver {
   // Mutation to update a message
   @Mutation(() => ConfirmResponse)
   async updateMessage(
-    @Arg("messageId") messageId: number,
-    @Arg("content") content: string,
+    @Arg("options") options: UpdateMessageInput,
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
+    // Destructure input
+    const { content, messageId } = options;
     const senderId = ctx.req.session.userId;
     return await ctx.Services.messages.updateMessage({
       messageId,

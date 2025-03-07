@@ -1,10 +1,12 @@
 import { db } from "../database/db";
 import { Services } from "../graphql/service";
 import { Request, Response } from "express";
-import { redisClient } from "src/redis";
+import { redisClient } from "../redis";
 import { ObjectType, Field, registerEnumType } from "type-graphql";
 import { ExtendedMessage } from "./inputs";
 import { Message } from "../graphql/types/Message";
+import { User } from "../graphql/types/User";
+import { ReturnedUserWithoutPassword } from "src/database/schema";
 
 export interface MyContext {
   req: Request;
@@ -158,6 +160,10 @@ export class Chat {
   senderId: number;
   @Field()
   receiverId: number;
+  @Field(() => User, { nullable: true })
+  sender?: ReturnedUserWithoutPassword | null;
+  @Field(() => User, { nullable: true })
+  receiver?: ReturnedUserWithoutPassword | null;
   @Field(() => [Message])
   messages: ExtendedMessage[];
 }
