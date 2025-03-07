@@ -8,6 +8,7 @@ import { HiddenPostsResolver } from "./resolvers/HiddenPostsResolver";
 import { SavedPostsResolver } from "./resolvers/SavedPostsResolver";
 import { CommunityResolver } from "./resolvers/CommunityResolver";
 import { CommunityMembersResolver } from "./resolvers/CommunityMembersResolver";
+import { MessageResolver } from "./resolvers/MessageResolver";
 
 export async function createSchema() {
   return await buildSchema({
@@ -20,6 +21,7 @@ export async function createSchema() {
       SavedPostsResolver,
       CommunityResolver,
       CommunityMembersResolver,
+      MessageResolver,
     ],
     validate: false,
   });

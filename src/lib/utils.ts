@@ -5,8 +5,8 @@ import {
   communities,
   communityMembers,
   hiddenPosts,
+  messages,
   posts,
-  savedPosts,
   users,
   votes,
 } from "../database/schema";
@@ -21,10 +21,10 @@ import {
   CommunityQueryResult,
   newSelectionProps,
   PostQueryResult,
-  selectionProps,
   SortOptions,
   VoteOptions,
 } from "../types/resolvers";
+import { aliasedTable } from "drizzle-orm";
 
 // Helper function to build a nested comment structure
 export const buildCommentThread = (
@@ -74,6 +74,7 @@ export const postSelection = ({ userId }: newSelectionProps) => ({
   authorId: posts.authorId,
   communityId: posts.communityId,
   media: posts.media,
+  video: posts.video,
   // Author Details
   author: {
     id: users.id,
@@ -140,77 +141,6 @@ export const postSelection = ({ userId }: newSelectionProps) => ({
   ),
   // Comment Count
   commentsCount: db.$count(comments, eq(comments.postId, posts.id)),
-});
-
-export const savedPostSelection = ({ ctx, userId }: selectionProps) => ({
-  id: posts.id,
-  title: posts.title,
-  content: posts.content,
-  createdAt: posts.createdAt,
-  updatedAt: posts.updatedAt,
-  authorId: posts.authorId,
-  communityId: posts.communityId,
-  // Author Details
-  author: {
-    id: users.id,
-    name: users.name,
-    image: users.image,
-    email: users.email,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-    confirmed: users.confirmed,
-  },
-  // Community Details
-  community: {
-    id: communities.id,
-    name: communities.name,
-    description: communities.description,
-    image: communities.image,
-    createdAt: communities.createdAt,
-    updatedAt: communities.updatedAt,
-    creatorId: communities.creatorId,
-    isPrivate: communities.isPrivate,
-    membersCount: ctx.db.$count(
-      communityMembers,
-      eq(communityMembers.communityId, posts.communityId)
-    ),
-    postsCount: ctx.db.$count(
-      posts,
-      eq(posts.communityId, communityMembers.communityId)
-    ),
-  },
-  // Upvote Count
-  upvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, true))
-  ),
-  // Downvote Count
-  downvotesCount: ctx.db.$count(
-    votes,
-    and(eq(votes.postId, posts.id), eq(votes.isUpvote, false))
-  ),
-  // If the current user has upvoted
-  isUpvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, true)
-    )
-  ),
-  // If the current user has downvoted
-  isDownvoted: ctx.db.$count(
-    votes,
-    and(
-      eq(votes.postId, posts.id),
-      eq(votes.userId, userId ?? 0),
-      eq(votes.isUpvote, false)
-    )
-  ),
-  // Comment Count
-  commentsCount: ctx.db.$count(comments, eq(comments.postId, posts.id)),
-  // Posts count
-  count: ctx.db.$count(savedPosts, eq(savedPosts.postId, posts.id)),
 });
 
 export const postsSorter = (sortBy: SortOptions) =>
@@ -328,6 +258,39 @@ export const commentSelection = ({ userId }: newSelectionProps) => ({
       eq(votes.isUpvote, false)
     )
   ),
+});
+
+export const sender = aliasedTable(users, "sender");
+export const receiver = aliasedTable(users, "receiver");
+
+export const messageSelection = () => ({
+  id: messages.id,
+  content: messages.content,
+  createdAt: messages.createdAt,
+  updatedAt: messages.updatedAt,
+  senderId: messages.senderId,
+  receiverId: messages.receiverId,
+  media: messages.media,
+  // Sender Details
+  sender: {
+    id: sender.id,
+    name: sender.name,
+    image: sender.image,
+    email: sender.email,
+    createdAt: sender.createdAt,
+    updatedAt: sender.updatedAt,
+    confirmed: sender.confirmed,
+  },
+  // Receiver Details
+  receiver: {
+    id: receiver.id,
+    name: receiver.name,
+    image: receiver.image,
+    email: receiver.email,
+    createdAt: receiver.createdAt,
+    updatedAt: receiver.updatedAt,
+    confirmed: receiver.confirmed,
+  },
 });
 
 export const mapPostArrayResult = (

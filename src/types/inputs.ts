@@ -1,6 +1,7 @@
 import {
   ReturnedComment,
   ReturnedCommunity,
+  ReturnedMessage,
   ReturnedPost,
   ReturnedUser,
   ReturnedUserWithoutPassword,
@@ -13,12 +14,18 @@ import { Community } from "../graphql/types/Community";
 import { Comment } from "../graphql/types/Comment";
 import { User } from "../graphql/types/User";
 import { Vote } from "../graphql/types/Vote";
+import { Message } from "../graphql/types/Message";
 
 export type ExtendedPost = ReturnedPost & {
   upvotesCount?: number;
   commentsCount?: number;
   isUpvoted?: VoteOptions;
   author?: ReturnedUserWithoutPassword | null;
+};
+
+export type ExtendedMessage = ReturnedMessage & {
+  sender?: ReturnedUserWithoutPassword | null;
+  receiver?: ReturnedUserWithoutPassword | null;
 };
 
 // Post Response type
@@ -28,6 +35,19 @@ export class PostResponse {
   post?: ExtendedPost;
   @Field(() => [Post], { nullable: true })
   postsArray?: ExtendedPost[];
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
+  @Field(() => Int, { nullable: true })
+  count?: number;
+}
+
+// Message Response type
+@ObjectType()
+export class MessageResponse {
+  @Field(() => Message, { nullable: true })
+  message?: ExtendedMessage;
+  @Field(() => [Message], { nullable: true })
+  messagesArray?: ExtendedMessage[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
   @Field(() => Int, { nullable: true })
@@ -370,4 +390,15 @@ export class DeleteVoteOptions {
   postId?: number;
   @Field(() => Int, { nullable: true })
   commentId?: number;
+}
+
+// Create Message Input Type
+@InputType()
+export class CreateMessageInput {
+  @Field()
+  content: string;
+  @Field(() => String, { nullable: true })
+  media?: string;
+  @Field()
+  receiverId: number;
 }

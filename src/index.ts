@@ -12,7 +12,9 @@ import { redisClient, redisStore } from "./redis";
 import { __prod__, env } from "./env";
 import { db } from "./database/db";
 import { MyContext } from "./types/resolvers";
-import { Services } from "./service";
+import { Services } from "./graphql/service";
+import { WebSocketServer } from "ws";
+import { useServer } from "graphql-ws/use/ws";
 
 // Start Apollo Server
 export async function startServer() {
@@ -20,13 +22,45 @@ export async function startServer() {
   const app = express();
   const httpServer = http.createServer(app);
 
+  // Creating the WebSocket server
+  const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: "/graphql",
+  });
   // Create TypeGraphQL Schema
   const schema = await createSchema();
 
+  // Hand in the schema we just created and have the
+  // WebSocketServer start listening.
+  const serverCleanup = useServer(
+    {
+      schema,
+      context: async (_ctx, _msg, _args) => {
+        return { redis: redisClient, db, Services };
+      },
+    },
+    wsServer
+  );
   // Create Apollo Server
   const server = new ApolloServer({
     schema,
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })], // Graceful shutdown support
+    plugins: [
+      // Graceful shutdown support for the http server
+      ApolloServerPluginDrainHttpServer({ httpServer }),
+      // Proper shutdown for the WebSocket server.
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              console.log("Shutting down WebSocket server...");
+              await serverCleanup.dispose();
+              wsServer.close();
+              console.log("WebSocket server closed.");
+            },
+          };
+        },
+      },
+    ],
   });
   await server.start();
   // Apply Apollo Middleware
@@ -66,6 +100,7 @@ export async function startServer() {
   // Start Express Server
   httpServer.listen(4000, () => {
     console.log("🚀 GraphQL Server ready at http://localhost:4000/graphql");
+    console.log("📡 WebSocket Server ready on ws://localhost:4000/graphql");
   });
 }
 

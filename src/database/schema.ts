@@ -37,6 +37,7 @@ export const posts = pgTable(
     title: text("title").notNull(),
     content: text("content").notNull(),
     media: text("media").array(),
+    video: text("video_url"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -199,6 +200,34 @@ export const communityMembers = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.communityId] })]
 );
 
+// Define a table for chat messages
+export const messages = pgTable(
+  "messages",
+  {
+    id: serial("id").primaryKey(),
+    senderId: integer("sender_id")
+      .references(() => users.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    receiverId: integer("receiver_id")
+      .references(() => users.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    content: text("content").notNull(),
+    media: text("media").default(sql`NULL`),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("idx_message_sender").on(table.senderId),
+    index("idx_message_receiver").on(table.receiverId),
+  ]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
@@ -207,6 +236,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   votes: many(votes),
   hiddenPosts: many(hiddenPosts),
   savedPosts: many(savedPosts),
+  sentMessages: many(messages, { relationName: "sender" }),
+  receivedMessages: many(messages, { relationName: "receiver" }),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -294,6 +325,16 @@ export const communityMembersRelations = relations(
     }),
   })
 );
+export const messagesRelations = relations(messages, ({ one }) => ({
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+  }),
+  receiver: one(users, {
+    fields: [messages.receiverId],
+    references: [users.id],
+  }),
+}));
 
 // Export types
 export type ReturnedUser = typeof users.$inferSelect;
@@ -304,6 +345,7 @@ export type ReturnedVote = typeof votes.$inferSelect;
 export type ReturnedHiddenPost = typeof hiddenPosts.$inferSelect;
 export type ReturnedCommunity = typeof communities.$inferSelect;
 export type ReturnedCommunityMember = typeof communityMembers.$inferSelect;
+export type ReturnedMessage = typeof messages.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type NewPost = typeof posts.$inferInsert;
 export type NewComment = typeof comments.$inferInsert;
@@ -311,3 +353,4 @@ export type NewVote = typeof votes.$inferInsert;
 export type NewHiddenPost = typeof hiddenPosts.$inferInsert;
 export type NewCommunity = typeof communities.$inferInsert;
 export type NewCommunityMember = typeof communityMembers.$inferInsert;
+export type NewMessage = typeof messages.$inferInsert;

@@ -44,4 +44,7 @@ export class Post {
 
   @Field(() => [String], { nullable: true })
   media?: string[];
+
+  @Field(() => String, { nullable: true })
+  video?: string;
 }

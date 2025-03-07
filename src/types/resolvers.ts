@@ -1,5 +1,5 @@
 import { db } from "../database/db";
-import { Services } from "../service";
+import { Services } from "../graphql/service";
 import { Request, Response } from "express";
 import { redisClient } from "src/redis";
 import { ObjectType, Field, registerEnumType } from "type-graphql";
@@ -67,7 +67,7 @@ export interface PostQueryResult {
   authorId: number;
   communityId: number;
   media: string[] | null;
-
+  video: string | null;
   // Author Details
   author: {
     id: number;
