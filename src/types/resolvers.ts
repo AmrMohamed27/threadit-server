@@ -7,6 +7,7 @@ import { ExtendedMessage } from "./inputs";
 import { Message } from "../graphql/types/Message";
 import { User } from "../graphql/types/User";
 import { ReturnedUserWithoutPassword } from "src/database/schema";
+import { pubSub } from "src/graphql/schema";
 
 export interface MyContext {
   req: Request;
@@ -14,6 +15,7 @@ export interface MyContext {
   redis: typeof redisClient;
   Services: typeof Services;
   db: typeof db;
+  pubSub: typeof pubSub;
 }
 // Error Type
 

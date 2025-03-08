@@ -408,23 +408,54 @@ export function registerErrorHandler(error: any): UserResponse {
   };
 }
 
-export function mapMessagesToChat(messages: ExtendedMessage[]): Chat[] {
+export function mapMessagesToChat(
+  messages: ExtendedMessage[],
+  currentUserId: number
+): Chat[] {
   let chats: Chat[] = [];
   messages.forEach((message) => {
-    const receiver = chats.find(
-      (chat) => chat.receiverId === message.receiverId
+    // Determine the two participants
+    const participant1 = message.senderId;
+    const participant2 = message.receiverId;
+
+    // Check if a chat with these participants already exists
+    const existingChat = chats.find(
+      (chat) =>
+        (chat.senderId === participant1 && chat.receiverId === participant2) ||
+        (chat.senderId === participant2 && chat.receiverId === participant1)
     );
-    if (receiver) {
-      receiver.messages.push(message);
+
+    if (existingChat) {
+      existingChat.messages.push(message);
     } else {
+      // Determine if the current user is the sender or receiver in this message
+      const isSender = message.senderId === currentUserId;
+
+      // Create a new chat with the current user as the sender
       chats.push({
-        senderId: message.senderId,
-        receiverId: message.receiverId,
-        sender: message.sender,
-        receiver: message.receiver,
+        senderId: isSender ? message.senderId : message.receiverId,
+        receiverId: isSender ? message.receiverId : message.senderId,
+        sender: isSender ? message.sender : message.receiver,
+        receiver: isSender ? message.receiver : message.sender,
         messages: [message],
       });
     }
   });
+
+  // Make sure all chats have the current user as the sender
+  chats = chats.map((chat) => {
+    if (chat.senderId !== currentUserId) {
+      // Swap sender and receiver
+      return {
+        senderId: chat.receiverId,
+        receiverId: chat.senderId,
+        sender: chat.receiver,
+        receiver: chat.sender,
+        messages: chat.messages,
+      };
+    }
+    return chat;
+  });
+
   return chats;
 }

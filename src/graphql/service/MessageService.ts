@@ -81,7 +81,11 @@ export class MessageService {
     const { count, messagesArray, errors } = await this.messagesFetcher({
       filters,
     });
-    return { count, errors, chats: mapMessagesToChat(messagesArray ?? []) };
+    return {
+      count,
+      errors,
+      chats: mapMessagesToChat(messagesArray ?? [], userId),
+    };
   }
 
   async createMessage({
@@ -135,9 +139,22 @@ export class MessageService {
           ],
         };
       }
+      const returnedMessage = await this.repository.getAllMessagesWithFilters({
+        filters: [eq(messages.id, result[0].id)],
+      });
+      if (!returnedMessage || returnedMessage.length === 0) {
+        return {
+          errors: [
+            {
+              field: "root",
+              message: "Error creating message",
+            },
+          ],
+        };
+      }
       // Return the created message
       return {
-        message: result[0],
+        message: returnedMessage[0],
       };
     } catch (error) {
       console.error(error);

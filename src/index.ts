@@ -5,7 +5,7 @@ import { json } from "body-parser";
 import cors from "cors";
 import express from "express";
 import http from "http";
-import { createSchema } from "./graphql/schema";
+import { createSchema, pubSub } from "./graphql/schema";
 import session from "express-session";
 import "reflect-metadata";
 import { redisClient, redisStore } from "./redis";
@@ -35,8 +35,19 @@ export async function startServer() {
   const serverCleanup = useServer(
     {
       schema,
-      context: async (_ctx, _msg, _args) => {
-        return { redis: redisClient, db, Services };
+      context: async (ctx, _msg, _args) => {
+        return {
+          redis: redisClient,
+          db,
+          Services,
+          pubSub, // Add placeholder for req/res since WebSockets don't have these
+          req: {
+            session: {
+              userId: (ctx.connectionParams?.userId as number) || null,
+            },
+          },
+          res: {},
+        };
       },
     },
     wsServer
@@ -93,6 +104,7 @@ export async function startServer() {
         redis: redisClient,
         Services: Services,
         db,
+        pubSub,
       }),
     })
   );

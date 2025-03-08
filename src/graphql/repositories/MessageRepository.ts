@@ -1,7 +1,6 @@
 import { and, asc, count, eq, SQL } from "drizzle-orm";
-import { alias, PgSelect } from "drizzle-orm/pg-core";
 import { db } from "../../database/db";
-import { messages, users } from "../../database/schema";
+import { messages } from "../../database/schema";
 import { messageSelection, receiver, sender } from "../../lib/utils";
 
 export class MessageRepository {
@@ -29,14 +28,6 @@ export class MessageRepository {
       .from(messages)
       .where(and(...filters));
   }
-  static async withCommentJoins<T extends PgSelect>({ qb }: { qb: T }) {
-    const sender = alias(users, "sender");
-    const receiver = alias(users, "receiver");
-    return await qb
-      .leftJoin(sender, eq(messages.senderId, users.id)) // Join users table to get sender details
-      .leftJoin(receiver, eq(messages.receiverId, users.id)) // Join users table to get receiver details
-      .groupBy(messages.id, users.id); // Group by to avoid duplicates
-  }
   static async insertMessage({
     senderId,
     receiverId,
@@ -51,7 +42,7 @@ export class MessageRepository {
     return await db
       .insert(messages)
       .values({ senderId, receiverId, content, media })
-      .returning();
+      .returning({ id: messages.id });
   }
   static async updateMessage({
     content,
