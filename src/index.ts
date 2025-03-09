@@ -5,7 +5,7 @@ import { json } from "body-parser";
 import cors from "cors";
 import express from "express";
 import http from "http";
-import { createSchema, pubSub } from "./graphql/schema";
+import { createSchema } from "./graphql/schema";
 import session from "express-session";
 import "reflect-metadata";
 import { redisClient, redisStore } from "./redis";
@@ -15,9 +15,34 @@ import { MyContext } from "./types/resolvers";
 import { Services } from "./graphql/service";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/use/ws";
+import { redisRealPubSub } from "./redis/pubsub";
 
 // Start Apollo Server
 export async function startServer() {
+  process.on("SIGINT", () => {
+    console.log("Shutting down...");
+
+    // Close Redis connections
+    if (redisRealPubSub) {
+      try {
+        // Access the underlying Redis clients and quit them
+        const redisPublisher = (redisRealPubSub as any).publisher;
+        const redisSubscriber = (redisRealPubSub as any).subscriber;
+
+        if (redisPublisher) redisPublisher.quit();
+        if (redisSubscriber) redisSubscriber.quit();
+
+        console.log("Redis connections closed");
+      } catch (err) {
+        console.error("Error closing Redis connections:", err);
+      }
+    }
+
+    process.exit(0);
+  });
+  process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  });
   // Create Express App
   const app = express();
   const httpServer = http.createServer(app);
@@ -35,18 +60,21 @@ export async function startServer() {
   const serverCleanup = useServer(
     {
       schema,
-      context: async (ctx, _msg, _args) => {
+      context: async (ctx, _msg, args) => {
+        // Get the subscription arguments if available
+        const subscriptionArgs = args.variables || {};
         return {
           redis: redisClient,
           db,
           Services,
-          pubSub, // Add placeholder for req/res since WebSockets don't have these
+          pubSub: redisRealPubSub,
           req: {
             session: {
               userId: (ctx.connectionParams?.userId as number) || null,
             },
           },
           res: {},
+          subscriptionArgs,
         };
       },
     },
@@ -104,7 +132,7 @@ export async function startServer() {
         redis: redisClient,
         Services: Services,
         db,
-        pubSub,
+        pubSub: redisRealPubSub,
       }),
     })
   );

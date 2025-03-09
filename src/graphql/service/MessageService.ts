@@ -30,6 +30,24 @@ export class MessageService {
     };
   }
 
+  private async singleMessageFetcher({
+    filters,
+  }: {
+    filters: SQL[];
+  }): Promise<MessageResponse> {
+    const result = await this.repository.getAllMessagesWithFilters({
+      filters,
+    });
+    if (!result || result.length === 0) {
+      return {
+        errors: [{ field: "messages", message: "no messages found" }],
+      };
+    }
+    return {
+      message: result[0],
+    };
+  }
+
   async fetchChat({
     user1,
     user2,
@@ -139,23 +157,9 @@ export class MessageService {
           ],
         };
       }
-      const returnedMessage = await this.repository.getAllMessagesWithFilters({
+      return await this.singleMessageFetcher({
         filters: [eq(messages.id, result[0].id)],
       });
-      if (!returnedMessage || returnedMessage.length === 0) {
-        return {
-          errors: [
-            {
-              field: "root",
-              message: "Error creating message",
-            },
-          ],
-        };
-      }
-      // Return the created message
-      return {
-        message: returnedMessage[0],
-      };
     } catch (error) {
       console.error(error);
       return {
