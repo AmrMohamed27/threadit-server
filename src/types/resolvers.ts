@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { pubSub } from "src/graphql/schema";
 import { Field, ObjectType, registerEnumType } from "type-graphql";
 import { db } from "../database/db";
 import { Services } from "../graphql/service";
 import { redisClient } from "../redis";
+import { redisRealPubSub } from "../redis/pubsub";
 
 export interface MyContext {
   req: Request;
@@ -11,7 +11,7 @@ export interface MyContext {
   redis: typeof redisClient;
   Services: typeof Services;
   db: typeof db;
-  pubSub: typeof pubSub;
+  pubSub: typeof redisRealPubSub;
 }
 // Error Type
 

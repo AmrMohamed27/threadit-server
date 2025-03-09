@@ -1,8 +1,8 @@
-import { and, eq, or, SQL } from "drizzle-orm";
-import { MessageRepository } from "../repositories/MessageRepository";
-import { MessageResponse } from "../../types/inputs";
+import { eq, SQL } from "drizzle-orm";
 import { messages } from "../../database/schema";
+import { MessageResponse } from "../../types/inputs";
 import { ConfirmResponse } from "../../types/resolvers";
+import { MessageRepository } from "../repositories/MessageRepository";
 
 export class MessageService {
   constructor(private repository: typeof MessageRepository) {}
@@ -28,6 +28,28 @@ export class MessageService {
       count: resultCount[0].count,
     };
   }
+
+  private async singleMessageFetcher({
+    filters,
+  }: {
+    filters: SQL[];
+  }): Promise<MessageResponse> {
+    const result = await this.repository.getAllMessagesWithFilters({
+      filters,
+    });
+    if (!result || result.length === 0) {
+      return {
+        errors: [{ field: "messages", message: "no messages found" }],
+      };
+    }
+    return {
+      message: result[0],
+    };
+  }
+
+
+
+
 
   async createMessage({
     senderId,
@@ -81,21 +103,9 @@ export class MessageService {
           ],
         };
       }
-      const response = await this.messagesFetcher({
+      return await this.singleMessageFetcher({
         filters: [eq(messages.id, result[0].id)],
       });
-      if (response.errors) {
-        return {
-          errors: [
-            {
-              field: "root",
-              message: response.errors[0].message,
-            },
-          ],
-        };
-      }
-      // Return the created message
-      return response;
     } catch (error) {
       console.error(error);
       return {

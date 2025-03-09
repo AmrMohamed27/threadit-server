@@ -14,11 +14,11 @@ import {
   UpdateMessageInput,
 } from "../../types/inputs";
 import { ConfirmResponse, MyContext } from "../../types/resolvers";
-import { pubSub } from "../schema";
+import { redisRealPubSub } from "../../redis/pubsub";
+import { withFilter } from "graphql-subscriptions";
 
 @Resolver()
 export class MessageResolver {
-
   // Mutation to create a new message
   @Mutation(() => MessageResponse)
   async createMessage(
@@ -35,7 +35,8 @@ export class MessageResolver {
       content,
       media,
     });
-    ctx.pubSub.publish("NEW_MESSAGE", result);
+    await ctx.pubSub.publish("NEW_MESSAGE", result);
+
     return result;
   }
 
@@ -70,14 +71,55 @@ export class MessageResolver {
 
   // Subscription to listen for new messages
   @Subscription(() => MessageResponse, {
-    subscribe: () => pubSub.asyncIterableIterator("NEW_MESSAGE"),
+    subscribe: withFilter(
+      () => redisRealPubSub.asyncIterator("NEW_MESSAGE"),
+      (rootValue, args, context, info) => {
+        console.log("Root Value: ", rootValue);
+        console.log("Args: ", args);
+        console.log("Context: ", context);
+        console.log("Info: ", info);
+        // const result = rootValue as MessageResponse;
+        // if (args.userId && result.message) {
+        //   return (
+        //     result.message.senderId === args.userId ||
+        //     result.message.receiverId === args.userId
+        //   );
+        // }
+        return true;
+      }
+    ),
+    // topics: "NEW_MESSAGE",
+    // filter: ({ payload, args, context, info }) => {
+    //   console.log("Payload: ", payload);
+    //   console.log("Args: ", args);
+    //   console.log("Context: ", context);
+    //   console.log("Info: ", info);
+    //   if (args.userId) {
+    //     return (
+    //       payload.message.senderId === args.userId ||
+    //       payload.message.receiverId === args.userId
+    //     );
+    //   }
+    //   return true;
+    // },
   })
   newMessage(
-    @Root() message: MessageResponse,
-    @Arg("userId", () => Int) userId: number
-    // @Ctx() ctx: MyContext
-  ): MessageResponse {
-    console.log("New message received:", message);
-    return message;
+    @Root() response: MessageResponse,
+    // @Ctx() ctx: MyContext,
+    @Arg("userId", () => Int, { nullable: true }) userId?: number
+  ) {
+    // console.log("New message received:", message);
+    // Handle filtering here
+    if (userId && response.message) {
+      // Only return the message if it's relevant to this user
+      if (response.message.senderId === userId) {
+        return response;
+      }
+      // Return null or undefined to filter out this message
+      return null;
+    }
+
+    // If no userId filter or message passes the filter, return it
+    return response;
   }
 }
