@@ -1,7 +1,7 @@
 import { and, asc, count, eq, SQL } from "drizzle-orm";
 import { db } from "../../database/db";
-import { messages } from "../../database/schema";
-import { messageSelection, receiver, sender } from "../../lib/utils";
+import { chatParticipants, chats, messages } from "../../database/schema";
+import { chatCreator, messageSelection, sender } from "../../lib/utils";
 
 export class MessageRepository {
   // Helper method to build base query with common joins
@@ -10,8 +10,10 @@ export class MessageRepository {
       .select(messageSelection())
       .from(messages)
       .innerJoin(sender, eq(messages.senderId, sender.id)) // Join users table to get sender details
-      .innerJoin(receiver, eq(messages.receiverId, receiver.id)) // Join users table to get receiver details
-      .groupBy(messages.id, sender.id, receiver.id) // Group by to avoid duplicates
+      .innerJoin(chats, eq(messages.chatId, chats.id)) // Join chats table to get chat details
+      .innerJoin(chatCreator, eq(chats.creatorId, chatCreator.id)) // Join users table to get chat creator details
+      .innerJoin(chatParticipants, eq(chatParticipants.chatId, chats.id)) // Join chat participants table to get chat participants details
+      .groupBy(messages.id, sender.id, chats.id) // Group by to avoid duplicates
       .orderBy(asc(messages.createdAt))
       .$dynamic();
   }
@@ -30,18 +32,18 @@ export class MessageRepository {
   }
   static async insertMessage({
     senderId,
-    receiverId,
+    chatId,
     content,
     media,
   }: {
     senderId: number;
-    receiverId: number;
+    chatId: number;
     content: string;
     media?: string;
   }) {
     return await db
       .insert(messages)
-      .values({ senderId, receiverId, content, media })
+      .values({ senderId, chatId, content, media })
       .returning({ id: messages.id });
   }
   static async updateMessage({

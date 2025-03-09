@@ -15,29 +15,9 @@ import {
 } from "../../types/inputs";
 import { ConfirmResponse, MyContext } from "../../types/resolvers";
 import { pubSub } from "../schema";
-import { withFilter } from "graphql-subscriptions";
 
 @Resolver()
 export class MessageResolver {
-  // Query to get a chat between the current user and another user
-  @Query(() => MessageResponse)
-  async getChat(
-    @Ctx() ctx: MyContext,
-    @Arg("user2", () => Int) user2: number
-  ): Promise<MessageResponse> {
-    const user1 = ctx.req.session.userId;
-    return await ctx.Services.messages.fetchChat({
-      user1,
-      user2,
-    });
-  }
-
-  // Query to get all the user's chats
-  @Query(() => MessageResponse)
-  async getUserChats(@Ctx() ctx: MyContext): Promise<MessageResponse> {
-    const userId = ctx.req.session.userId;
-    return await ctx.Services.messages.fetchUserChats({ userId });
-  }
 
   // Mutation to create a new message
   @Mutation(() => MessageResponse)
@@ -46,12 +26,12 @@ export class MessageResolver {
     @Arg("options") options: CreateMessageInput
   ): Promise<MessageResponse> {
     // Destructure input
-    const { receiverId, content, media } = options;
+    const { chatId, content, media } = options;
     // Get author id from session
     const senderId = ctx.req.session.userId;
     const result = await ctx.Services.messages.createMessage({
       senderId,
-      receiverId,
+      chatId,
       content,
       media,
     });

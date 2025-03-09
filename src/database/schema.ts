@@ -200,7 +200,54 @@ export const communityMembers = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.communityId] })]
 );
 
-// Define a table for chat messages
+// Define Chats Table
+export const chats = pgTable(
+  "chats",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    image: text("image"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    creatorId: integer("creator_id")
+      .references(() => users.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    isGroupChat: boolean("is_group_chat").default(false).notNull(),
+  },
+  (table) => [index("idx_chats_creatorId").on(table.creatorId)]
+);
+
+// Define Chat Participants Table
+export const chatParticipants = pgTable(
+  "chat_participants",
+  {
+    userId: integer("user_id")
+      .references(() => users.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    chatId: integer("chat_id")
+      .references(() => chats.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    joinedAt: timestamp("joined_at").defaultNow(),
+    lastReadMessageId: integer("last_read_message_id").references(
+      () => messages.id
+    ),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.chatId] }),
+    index("idx_chat_participants_userId").on(table.userId),
+    index("idx_chat_participants_chatId").on(table.chatId),
+  ]
+);
+
+// Modify Messages Table to reference chats instead of direct user-to-user
 export const messages = pgTable(
   "messages",
   {
@@ -210,8 +257,8 @@ export const messages = pgTable(
         onDelete: "cascade",
       })
       .notNull(),
-    receiverId: integer("receiver_id")
-      .references(() => users.id, {
+    chatId: integer("chat_id")
+      .references(() => chats.id, {
         onDelete: "cascade",
       })
       .notNull(),
@@ -224,11 +271,31 @@ export const messages = pgTable(
   },
   (table) => [
     index("idx_message_sender").on(table.senderId),
-    index("idx_message_receiver").on(table.receiverId),
+    index("idx_message_chat").on(table.chatId),
   ]
 );
 
+// Define chat participants relations
+export const chatParticipantsRelations = relations(
+  chatParticipants,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [chatParticipants.userId],
+      references: [users.id],
+    }),
+    chat: one(chats, {
+      fields: [chatParticipants.chatId],
+      references: [chats.id],
+    }),
+    lastReadMessage: one(messages, {
+      fields: [chatParticipants.lastReadMessageId],
+      references: [messages.id],
+    }),
+  })
+);
+
 // Relations
+
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   comments: many(comments),
@@ -236,8 +303,19 @@ export const usersRelations = relations(users, ({ many }) => ({
   votes: many(votes),
   hiddenPosts: many(hiddenPosts),
   savedPosts: many(savedPosts),
+  createdChats: many(chats),
+  chatParticipations: many(chatParticipants),
   sentMessages: many(messages, { relationName: "sender" }),
-  receivedMessages: many(messages, { relationName: "receiver" }),
+}));
+
+// Define chat relations
+export const chatsRelations = relations(chats, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [chats.creatorId],
+    references: [users.id],
+  }),
+  participants: many(chatParticipants),
+  messages: many(messages),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -325,14 +403,15 @@ export const communityMembersRelations = relations(
     }),
   })
 );
+
 export const messagesRelations = relations(messages, ({ one }) => ({
   sender: one(users, {
     fields: [messages.senderId],
     references: [users.id],
   }),
-  receiver: one(users, {
-    fields: [messages.receiverId],
-    references: [users.id],
+  chat: one(chats, {
+    fields: [messages.chatId],
+    references: [chats.id],
   }),
 }));
 
@@ -345,6 +424,8 @@ export type ReturnedVote = typeof votes.$inferSelect;
 export type ReturnedHiddenPost = typeof hiddenPosts.$inferSelect;
 export type ReturnedCommunity = typeof communities.$inferSelect;
 export type ReturnedCommunityMember = typeof communityMembers.$inferSelect;
+export type ReturnedChat = typeof chats.$inferSelect;
+export type ReturnedChatParticipant = typeof chatParticipants.$inferSelect;
 export type ReturnedMessage = typeof messages.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type NewPost = typeof posts.$inferInsert;
@@ -353,4 +434,6 @@ export type NewVote = typeof votes.$inferInsert;
 export type NewHiddenPost = typeof hiddenPosts.$inferInsert;
 export type NewCommunity = typeof communities.$inferInsert;
 export type NewCommunityMember = typeof communityMembers.$inferInsert;
+export type NewChat = typeof chats.$inferInsert;
+export type NewChatParticipant = typeof chatParticipants.$inferInsert;
 export type NewMessage = typeof messages.$inferInsert;

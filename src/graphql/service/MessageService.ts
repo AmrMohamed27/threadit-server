@@ -3,12 +3,11 @@ import { MessageRepository } from "../repositories/MessageRepository";
 import { MessageResponse } from "../../types/inputs";
 import { messages } from "../../database/schema";
 import { ConfirmResponse } from "../../types/resolvers";
-import { mapMessagesToChat } from "../../lib/utils";
 
 export class MessageService {
   constructor(private repository: typeof MessageRepository) {}
 
-  private async messagesFetcher({
+  async messagesFetcher({
     filters,
   }: {
     filters: SQL[];
@@ -30,72 +29,14 @@ export class MessageService {
     };
   }
 
-  async fetchChat({
-    user1,
-    user2,
-  }: {
-    user1?: number;
-    user2?: number;
-  }): Promise<MessageResponse> {
-    // Check if users are provided
-    if (!user1 || !user2) {
-      return {
-        errors: [
-          {
-            field: "root",
-            message: "You must provide two users to get a chat between them.",
-          },
-        ],
-      };
-    }
-    // Get all messages where user1 is sender or receiver and user2 is sender or receiver
-    const filters: SQL[] = [
-      or(
-        and(eq(messages.senderId, user1), eq(messages.receiverId, user2))!,
-        and(eq(messages.senderId, user2), eq(messages.receiverId, user1))!
-      )!,
-    ];
-    return await this.messagesFetcher({ filters });
-  }
-
-  async fetchUserChats({
-    userId,
-  }: {
-    userId?: number;
-  }): Promise<MessageResponse> {
-    // Check if user is logged in
-    if (!userId) {
-      return {
-        errors: [
-          {
-            field: "userId",
-            message: "You must be logged in to get your chats",
-          },
-        ],
-      };
-    }
-    // Get all messages where the user is either sender or receiver
-    const filters: SQL[] = [
-      or(eq(messages.senderId, userId), eq(messages.receiverId, userId))!,
-    ];
-    const { count, messagesArray, errors } = await this.messagesFetcher({
-      filters,
-    });
-    return {
-      count,
-      errors,
-      chats: mapMessagesToChat(messagesArray ?? [], userId),
-    };
-  }
-
   async createMessage({
     senderId,
-    receiverId,
+    chatId,
     content,
     media,
   }: {
     senderId?: number;
-    receiverId?: number;
+    chatId?: number;
     content: string;
     media?: string;
   }): Promise<MessageResponse> {
@@ -110,12 +51,13 @@ export class MessageService {
         ],
       };
     }
-    if (!receiverId) {
+    // Check if a chat id is provided
+    if (!chatId) {
       return {
         errors: [
           {
             field: "root",
-            message: "You must provide a receiverId to create a message",
+            message: "You must provide a chatId to create a message",
           },
         ],
       };
@@ -124,7 +66,7 @@ export class MessageService {
     try {
       const result = await this.repository.insertMessage({
         senderId,
-        receiverId,
+        chatId,
         content,
         media,
       });
@@ -139,23 +81,21 @@ export class MessageService {
           ],
         };
       }
-      const returnedMessage = await this.repository.getAllMessagesWithFilters({
+      const response = await this.messagesFetcher({
         filters: [eq(messages.id, result[0].id)],
       });
-      if (!returnedMessage || returnedMessage.length === 0) {
+      if (response.errors) {
         return {
           errors: [
             {
               field: "root",
-              message: "Error creating message",
+              message: response.errors[0].message,
             },
           ],
         };
       }
       // Return the created message
-      return {
-        message: returnedMessage[0],
-      };
+      return response;
     } catch (error) {
       console.error(error);
       return {

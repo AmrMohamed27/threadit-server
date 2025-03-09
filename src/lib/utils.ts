@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, notExists, sql } from "drizzle-orm";
 import { db } from "../database/db";
 import {
+  chatParticipants,
+  chats,
   comments,
   communities,
   communityMembers,
@@ -13,12 +15,10 @@ import {
 import {
   ExtendedComment,
   extendedCommunity,
-  ExtendedMessage,
   ExtendedPost,
   UserResponse,
 } from "../types/inputs";
 import {
-  Chat,
   CommentQueryResult,
   CommunityQueryResult,
   newSelectionProps,
@@ -264,6 +264,7 @@ export const commentSelection = ({ userId }: newSelectionProps) => ({
 
 export const sender = aliasedTable(users, "sender");
 export const receiver = aliasedTable(users, "receiver");
+export const chatCreator = aliasedTable(users, "chat_creator");
 
 export const messageSelection = () => ({
   id: messages.id,
@@ -271,7 +272,7 @@ export const messageSelection = () => ({
   createdAt: messages.createdAt,
   updatedAt: messages.updatedAt,
   senderId: messages.senderId,
-  receiverId: messages.receiverId,
+  chatId: messages.chatId,
   media: messages.media,
   // Sender Details
   sender: {
@@ -283,15 +284,46 @@ export const messageSelection = () => ({
     updatedAt: sender.updatedAt,
     confirmed: sender.confirmed,
   },
-  // Receiver Details
-  receiver: {
-    id: receiver.id,
-    name: receiver.name,
-    image: receiver.image,
-    email: receiver.email,
-    createdAt: receiver.createdAt,
-    updatedAt: receiver.updatedAt,
-    confirmed: receiver.confirmed,
+  chat: {
+    id: chats.id,
+    name: chats.name,
+    createdAt: chats.createdAt,
+    updatedAt: chats.updatedAt,
+    creatorId: chats.creatorId,
+    isGroupChat: chats.isGroupChat,
+    image: chats.image,
+    // Additional Fields
+    messagesCount: db.$count(messages, eq(messages.chatId, chats.id)),
+    participantsCount: db.$count(
+      chatParticipants,
+      eq(chatParticipants.chatId, chats.id)
+    ),
+  },
+});
+
+export const chatSelection = () => ({
+  id: chats.id,
+  name: chats.name,
+  image: chats.image,
+  createdAt: chats.createdAt,
+  updatedAt: chats.updatedAt,
+  creatorId: chats.creatorId,
+  isGroupChat: chats.isGroupChat,
+  lastReadMessageId: chatParticipants.lastReadMessageId,
+  // Additional Fields
+  messagesCount: db.$count(messages, eq(messages.chatId, chats.id)),
+  participantsCount: db.$count(
+    chatParticipants,
+    eq(chatParticipants.chatId, chats.id)
+  ),
+  creator: {
+    id: chatCreator.id,
+    name: chatCreator.name,
+    image: chatCreator.image,
+    email: chatCreator.email,
+    createdAt: chatCreator.createdAt,
+    updatedAt: chatCreator.updatedAt,
+    confirmed: chatCreator.confirmed,
   },
 });
 
@@ -406,56 +438,4 @@ export function registerErrorHandler(error: any): UserResponse {
       },
     ],
   };
-}
-
-export function mapMessagesToChat(
-  messages: ExtendedMessage[],
-  currentUserId: number
-): Chat[] {
-  let chats: Chat[] = [];
-  messages.forEach((message) => {
-    // Determine the two participants
-    const participant1 = message.senderId;
-    const participant2 = message.receiverId;
-
-    // Check if a chat with these participants already exists
-    const existingChat = chats.find(
-      (chat) =>
-        (chat.senderId === participant1 && chat.receiverId === participant2) ||
-        (chat.senderId === participant2 && chat.receiverId === participant1)
-    );
-
-    if (existingChat) {
-      existingChat.messages.push(message);
-    } else {
-      // Determine if the current user is the sender or receiver in this message
-      const isSender = message.senderId === currentUserId;
-
-      // Create a new chat with the current user as the sender
-      chats.push({
-        senderId: isSender ? message.senderId : message.receiverId,
-        receiverId: isSender ? message.receiverId : message.senderId,
-        sender: isSender ? message.sender : message.receiver,
-        receiver: isSender ? message.receiver : message.sender,
-        messages: [message],
-      });
-    }
-  });
-
-  // Make sure all chats have the current user as the sender
-  chats = chats.map((chat) => {
-    if (chat.senderId !== currentUserId) {
-      // Swap sender and receiver
-      return {
-        senderId: chat.receiverId,
-        receiverId: chat.senderId,
-        sender: chat.receiver,
-        receiver: chat.sender,
-        messages: chat.messages,
-      };
-    }
-    return chat;
-  });
-
-  return chats;
 }

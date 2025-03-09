@@ -1,13 +1,9 @@
+import { Request, Response } from "express";
+import { pubSub } from "src/graphql/schema";
+import { Field, ObjectType, registerEnumType } from "type-graphql";
 import { db } from "../database/db";
 import { Services } from "../graphql/service";
-import { Request, Response } from "express";
 import { redisClient } from "../redis";
-import { ObjectType, Field, registerEnumType } from "type-graphql";
-import { ExtendedMessage } from "./inputs";
-import { Message } from "../graphql/types/Message";
-import { User } from "../graphql/types/User";
-import { ReturnedUserWithoutPassword } from "src/database/schema";
-import { pubSub } from "src/graphql/schema";
 
 export interface MyContext {
   req: Request;
@@ -154,18 +150,4 @@ export interface CommunityQueryResult {
     confirmed: boolean;
   } | null;
   isJoined: number;
-}
-
-@ObjectType()
-export class Chat {
-  @Field()
-  senderId: number;
-  @Field()
-  receiverId: number;
-  @Field(() => User, { nullable: true })
-  sender?: ReturnedUserWithoutPassword | null;
-  @Field(() => User, { nullable: true })
-  receiver?: ReturnedUserWithoutPassword | null;
-  @Field(() => [Message])
-  messages: ExtendedMessage[];
 }

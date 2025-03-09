@@ -1,5 +1,6 @@
 import { Field, Int, ObjectType } from "type-graphql";
 import { User } from "./User";
+import { Chat } from "./Chat";
 
 @ObjectType()
 export class Message {
@@ -19,13 +20,13 @@ export class Message {
   senderId: number;
 
   @Field(() => Int)
-  receiverId: number;
+  chatId: number;
 
   @Field(() => User, { nullable: true })
   sender?: User;
 
-  @Field(() => User, { nullable: true })
-  receiver?: User;
+  @Field(() => Chat, { nullable: true })
+  chat?: Chat;
 
   @Field(() => String, { nullable: true })
   media?: string;

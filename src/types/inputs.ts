@@ -1,4 +1,6 @@
+import { Field, InputType, Int, ObjectType } from "type-graphql";
 import {
+  ReturnedChat,
   ReturnedComment,
   ReturnedCommunity,
   ReturnedMessage,
@@ -7,14 +9,14 @@ import {
   ReturnedUserWithoutPassword,
   ReturnedVote,
 } from "../database/schema";
-import { Chat, FieldError, SortOptions, VoteOptions } from "./resolvers";
-import { Field, InputType, Int, ObjectType } from "type-graphql";
-import { Post } from "../graphql/types/Post";
-import { Community } from "../graphql/types/Community";
+import { Chat } from "../graphql/types/Chat";
 import { Comment } from "../graphql/types/Comment";
+import { Community } from "../graphql/types/Community";
+import { Message } from "../graphql/types/Message";
+import { Post } from "../graphql/types/Post";
 import { User } from "../graphql/types/User";
 import { Vote } from "../graphql/types/Vote";
-import { Message } from "../graphql/types/Message";
+import { FieldError, SortOptions, VoteOptions } from "./resolvers";
 
 export type ExtendedPost = ReturnedPost & {
   upvotesCount?: number;
@@ -25,7 +27,7 @@ export type ExtendedPost = ReturnedPost & {
 
 export type ExtendedMessage = ReturnedMessage & {
   sender?: ReturnedUserWithoutPassword | null;
-  receiver?: ReturnedUserWithoutPassword | null;
+  chat?: ReturnedChat | null;
 };
 
 // Post Response type
@@ -402,7 +404,7 @@ export class CreateMessageInput {
   @Field(() => String, { nullable: true })
   media?: string;
   @Field()
-  receiverId: number;
+  chatId: number;
 }
 
 // Update message input type
