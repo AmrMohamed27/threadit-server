@@ -7,7 +7,7 @@ import {
   ReturnedPost,
   ReturnedUser,
   ReturnedUserWithoutPassword,
-  ReturnedVote,
+  ReturnedVote
 } from "../database/schema";
 import { Chat } from "../graphql/types/Chat";
 import { Comment } from "../graphql/types/Comment";
@@ -25,9 +25,12 @@ export type ExtendedPost = ReturnedPost & {
   author?: ReturnedUserWithoutPassword | null;
 };
 
+export type ExtendedChat = ReturnedChat & {
+  creator?: ReturnedUserWithoutPassword | null;
+};
+
 export type ExtendedMessage = ReturnedMessage & {
   sender?: ReturnedUserWithoutPassword | null;
-  chat?: ReturnedChat | null;
 };
 
 // Post Response type
@@ -50,8 +53,19 @@ export class MessageResponse {
   message?: ExtendedMessage;
   @Field(() => [Message], { nullable: true })
   messagesArray?: ExtendedMessage[];
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
+  @Field(() => Int, { nullable: true })
+  count?: number;
+}
+
+// Chat Response Type
+@ObjectType()
+export class ChatResponse {
+  @Field(() => Chat, { nullable: true })
+  chat?: ExtendedChat;
   @Field(() => [Chat], { nullable: true })
-  chats?: Chat[];
+  chatsArray?: ExtendedChat[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
   @Field(() => Int, { nullable: true })
@@ -414,4 +428,37 @@ export class UpdateMessageInput {
   content: string;
   @Field(() => Int)
   messageId: number;
+}
+
+// Create Chat Input Type
+@InputType()
+export class CreateChatInput {
+  @Field()
+  name: string;
+  @Field(() => String, { nullable: true })
+  image?: string;
+  @Field(() => Boolean, { nullable: true })
+  isGroupChat?: boolean;
+  @Field(() => [Int])
+  participantIds: number[];
+}
+
+// Update Chat Input Type
+@InputType()
+export class UpdateChatInput {
+  @Field()
+  chatId: number;
+  @Field(() => String, { nullable: true })
+  name?: string;
+  @Field(() => String, { nullable: true })
+  image?: string;
+}
+
+// Add Chat Participant Input Type
+@InputType()
+export class AddChatParticipantInput {
+  @Field()
+  chatId: number;
+  @Field()
+  participantId: number;
 }

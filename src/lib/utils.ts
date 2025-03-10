@@ -284,21 +284,6 @@ export const messageSelection = () => ({
     updatedAt: sender.updatedAt,
     confirmed: sender.confirmed,
   },
-  chat: {
-    id: chats.id,
-    name: chats.name,
-    createdAt: chats.createdAt,
-    updatedAt: chats.updatedAt,
-    creatorId: chats.creatorId,
-    isGroupChat: chats.isGroupChat,
-    image: chats.image,
-    // Additional Fields
-    messagesCount: db.$count(messages, eq(messages.chatId, chats.id)),
-    participantsCount: db.$count(
-      chatParticipants,
-      eq(chatParticipants.chatId, chats.id)
-    ),
-  },
 });
 
 export const chatSelection = () => ({
@@ -311,11 +296,6 @@ export const chatSelection = () => ({
   isGroupChat: chats.isGroupChat,
   lastReadMessageId: chatParticipants.lastReadMessageId,
   // Additional Fields
-  messagesCount: db.$count(messages, eq(messages.chatId, chats.id)),
-  participantsCount: db.$count(
-    chatParticipants,
-    eq(chatParticipants.chatId, chats.id)
-  ),
   creator: {
     id: chatCreator.id,
     name: chatCreator.name,

@@ -3,19 +3,17 @@ import {
   Ctx,
   Int,
   Mutation,
-  Query,
   Resolver,
   Root,
   Subscription,
 } from "type-graphql";
+import { redisRealPubSub, SubscriptionTopics } from "../../redis/pubsub";
 import {
   CreateMessageInput,
   MessageResponse,
   UpdateMessageInput,
 } from "../../types/inputs";
 import { ConfirmResponse, MyContext } from "../../types/resolvers";
-import { redisRealPubSub } from "../../redis/pubsub";
-import { withFilter } from "graphql-subscriptions";
 
 @Resolver()
 export class MessageResolver {
@@ -45,15 +43,17 @@ export class MessageResolver {
   async updateMessage(
     @Arg("options") options: UpdateMessageInput,
     @Ctx() ctx: MyContext
-  ): Promise<ConfirmResponse> {
+  ): Promise<MessageResponse> {
     // Destructure input
     const { content, messageId } = options;
     const senderId = ctx.req.session.userId;
-    return await ctx.Services.messages.updateMessage({
+    const result = await ctx.Services.messages.updateMessage({
       messageId,
       content,
       senderId,
     });
+    await ctx.pubSub.publish(SubscriptionTopics.MESSAGE_UPDATED, result);
+    return result;
   }
 
   // Mutation to delete a message
@@ -63,56 +63,44 @@ export class MessageResolver {
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
     const senderId = ctx.req.session.userId;
-    return await ctx.Services.messages.deleteMessage({
+    const result = await ctx.Services.messages.deleteMessage({
       messageId,
       senderId,
     });
+    if (result.success) {
+      await ctx.pubSub.publish(SubscriptionTopics.MESSAGE_DELETED, result);
+    }
+    return result;
   }
 
   // Subscription to listen for new messages
   @Subscription(() => MessageResponse, {
-    subscribe: withFilter(
-      () => redisRealPubSub.asyncIterator("NEW_MESSAGE"),
-      (rootValue, args, context, info) => {
-        console.log("Root Value: ", rootValue);
-        console.log("Args: ", args);
-        console.log("Context: ", context);
-        console.log("Info: ", info);
-        // const result = rootValue as MessageResponse;
-        // if (args.userId && result.message) {
-        //   return (
-        //     result.message.senderId === args.userId ||
-        //     result.message.receiverId === args.userId
-        //   );
-        // }
-        return true;
-      }
-    ),
-    // topics: "NEW_MESSAGE",
-    // filter: ({ payload, args, context, info }) => {
-    //   console.log("Payload: ", payload);
-    //   console.log("Args: ", args);
-    //   console.log("Context: ", context);
-    //   console.log("Info: ", info);
-    //   if (args.userId) {
-    //     return (
-    //       payload.message.senderId === args.userId ||
-    //       payload.message.receiverId === args.userId
-    //     );
-    //   }
-    //   return true;
-    // },
+    subscribe: () =>
+      redisRealPubSub.asyncIterator([
+        SubscriptionTopics.NEW_MESSAGE,
+        SubscriptionTopics.MESSAGE_UPDATED,
+        SubscriptionTopics.MESSAGE_DELETED,
+      ]),
   })
-  newMessage(
+  async newMessage(
     @Root() response: MessageResponse,
-    // @Ctx() ctx: MyContext,
-    @Arg("userId", () => Int, { nullable: true }) userId?: number
+    @Ctx() ctx: MyContext,
+    @Arg("chatId", () => Int, { nullable: true }) chatId?: number
   ) {
-    // console.log("New message received:", message);
+    const userId = ctx.req.session.userId;
     // Handle filtering here
-    if (userId && response.message) {
+    if (userId && chatId && response.message) {
       // Only return the message if it's relevant to this user
+      // Case 1: the user is the sender of the message so we don't need to check the chat
       if (response.message.senderId === userId) {
+        return response;
+      }
+      // Case 2: The user is not the sender so we need to check if the user is a participant in the chat
+      const result = await ctx.Services.chats.checkChatParticipant({
+        userId,
+        chatId,
+      });
+      if (result.success) {
         return response;
       }
       // Return null or undefined to filter out this message

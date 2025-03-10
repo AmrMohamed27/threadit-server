@@ -60,9 +60,7 @@ export async function startServer() {
   const serverCleanup = useServer(
     {
       schema,
-      context: async (ctx, _msg, args) => {
-        // Get the subscription arguments if available
-        const subscriptionArgs = args.variables || {};
+      context: async (ctx, _msg, _args) => {
         return {
           redis: redisClient,
           db,
@@ -74,7 +72,6 @@ export async function startServer() {
             },
           },
           res: {},
-          subscriptionArgs,
         };
       },
     },

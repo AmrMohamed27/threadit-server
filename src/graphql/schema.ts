@@ -10,6 +10,7 @@ import { PostResolver } from "./resolvers/PostResolver";
 import { SavedPostsResolver } from "./resolvers/SavedPostsResolver";
 import { UserResolver } from "./resolvers/UserResolver";
 import { VoteResolver } from "./resolvers/VoteResolver";
+import { ChatResolver } from "./resolvers/ChatResolver";
 
 export async function createSchema() {
   return await buildSchema({
@@ -23,6 +24,7 @@ export async function createSchema() {
       CommunityResolver,
       CommunityMembersResolver,
       MessageResolver,
+      ChatResolver,
     ],
     validate: false,
     pubSub: redisRealPubSub as unknown as PubSub,

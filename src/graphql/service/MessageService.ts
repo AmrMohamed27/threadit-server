@@ -46,11 +46,6 @@ export class MessageService {
       message: result[0],
     };
   }
-
-
-
-
-
   async createMessage({
     senderId,
     chatId,
@@ -127,11 +122,10 @@ export class MessageService {
     senderId?: number;
     messageId: number;
     content: string;
-  }): Promise<ConfirmResponse> {
+  }): Promise<MessageResponse> {
     // Check if user is logged in
     if (!senderId) {
       return {
-        success: false,
         errors: [
           {
             field: "senderId",
@@ -150,7 +144,6 @@ export class MessageService {
       // handle update error
       if (!result || result.rowCount === 0) {
         return {
-          success: false,
           errors: [
             {
               field: "root",
@@ -160,13 +153,12 @@ export class MessageService {
           ],
         };
       }
-      return {
-        success: true,
-      };
+      return this.singleMessageFetcher({
+        filters: [eq(messages.id, messageId)],
+      });
     } catch (error) {
       console.error(error);
       return {
-        success: false,
         errors: [
           {
             field: "root",
@@ -226,6 +218,28 @@ export class MessageService {
           {
             field: "root",
             message: error.message ?? "An Error occurred during deletion",
+          },
+        ],
+      };
+    }
+  }
+
+  async fetchChatMessages({
+    chatId,
+  }: {
+    chatId: number;
+  }): Promise<MessageResponse> {
+    try {
+      const filters = [eq(messages.chatId, chatId)];
+      return await this.messagesFetcher({ filters });
+    } catch (error) {
+      console.error(error);
+      return {
+        errors: [
+          {
+            field: "root",
+            message:
+              error.message ?? "An Error occurred during getting chat messages",
           },
         ],
       };

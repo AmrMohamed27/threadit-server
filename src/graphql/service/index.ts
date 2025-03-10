@@ -16,6 +16,8 @@ import { VoteService } from "./VoteService";
 import { VoteRepository } from "../repositories/VoteRepository";
 import { MessageService } from "./MessageService";
 import { MessageRepository } from "../repositories/MessageRepository";
+import { ChatService } from "./ChatService";
+import { ChatRepository } from "../repositories/ChatRepository";
 
 export const Services = {
   posts: new PostService(PostRepository),
@@ -27,4 +29,5 @@ export const Services = {
   users: new UserService(UserRepository),
   votes: new VoteService(VoteRepository, PostRepository, CommentRepository),
   messages: new MessageService(MessageRepository),
+  chats: new ChatService(ChatRepository, UserRepository),
 };

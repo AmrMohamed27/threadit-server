@@ -1,7 +1,7 @@
 import { and, asc, count, eq, SQL } from "drizzle-orm";
 import { db } from "../../database/db";
-import { chatParticipants, chats, messages } from "../../database/schema";
-import { chatCreator, messageSelection, sender } from "../../lib/utils";
+import { messages } from "../../database/schema";
+import { messageSelection, sender } from "../../lib/utils";
 
 export class MessageRepository {
   // Helper method to build base query with common joins
@@ -10,10 +10,7 @@ export class MessageRepository {
       .select(messageSelection())
       .from(messages)
       .innerJoin(sender, eq(messages.senderId, sender.id)) // Join users table to get sender details
-      .innerJoin(chats, eq(messages.chatId, chats.id)) // Join chats table to get chat details
-      .innerJoin(chatCreator, eq(chats.creatorId, chatCreator.id)) // Join users table to get chat creator details
-      .innerJoin(chatParticipants, eq(chatParticipants.chatId, chats.id)) // Join chat participants table to get chat participants details
-      .groupBy(messages.id, sender.id, chats.id) // Group by to avoid duplicates
+      .groupBy(messages.id, sender.id) // Group by to avoid duplicates
       .orderBy(asc(messages.createdAt))
       .$dynamic();
   }
