@@ -126,7 +126,8 @@ export class ChatRepository {
         name: name ? name : chats.name,
         image: image ? image : chats.image,
       })
-      .where(and(eq(chats.id, chatId), eq(chats.creatorId, creatorId)));
+      .where(and(eq(chats.id, chatId), eq(chats.creatorId, creatorId)))
+      .returning();
   }
   static async deleteChat({
     chatId,

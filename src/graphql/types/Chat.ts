@@ -16,6 +16,9 @@ export class Chat {
   @Field(() => String)
   updatedAt: Date;
 
+  @Field(() => String, { nullable: true })
+  image?: string;
+
   @Field(() => Int)
   creatorId: number;
 

@@ -1,7 +1,6 @@
 import {
   Arg,
   Ctx,
-  Int,
   Mutation,
   Query,
   Resolver,
@@ -80,8 +79,8 @@ export class ChatResolver {
     const { name, image, isGroupChat, participantIds } = options;
     // Get creator id from session
     const creatorId = ctx.req.session.userId;
-    let result;
-    if (isGroupChat) {
+    let result: ChatResponse;
+    if (isGroupChat === true) {
       result = await ctx.Services.chats.createGroupChat({
         creatorId,
         name,
@@ -93,18 +92,24 @@ export class ChatResolver {
         name,
         creatorId,
         image,
-        participantId: participantIds[0],
+        participantIds,
       });
     }
-    if (!result.errors) {
-      await ctx.pubSub.publish(SubscriptionTopics.NEW_CHAT, result);
+    if (!result.errors && result.chat) {
+      const { chat: joinedChat } = await ctx.Services.chats.fetchChatById({
+        chatId: result.chat.id,
+      });
+      await ctx.pubSub.publish(SubscriptionTopics.NEW_CHAT, {
+        chat: joinedChat,
+        errors: result.errors,
+      });
     }
 
     return result;
   }
 
   // Mutation to update a chat
-  @Mutation(() => ConfirmResponse)
+  @Mutation(() => ChatResponse)
   async updateChat(
     @Arg("options") options: UpdateChatInput,
     @Ctx() ctx: MyContext

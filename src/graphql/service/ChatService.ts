@@ -92,7 +92,7 @@ export class ChatService {
     }
   }
 
-  async fetchChatById({ chatId }: { chatId: number }) {
+  async fetchChatById({ chatId }: { chatId: number }): Promise<ChatResponse> {
     try {
       const filters = [eq(chats.id, chatId)];
       return await this.singleChatFetcher({ filters });
@@ -169,7 +169,7 @@ export class ChatService {
         errors: [
           {
             field: "root",
-            message: "You must be logged in to create a message",
+            message: "You must be logged in to create a chat",
           },
         ],
       };
@@ -189,26 +189,28 @@ export class ChatService {
           errors: [
             {
               field: "root",
-              message: "Error creating message",
+              message: "Error creating chat",
             },
           ],
         };
       }
       const createdChat = result[0];
-      //   Add creator to chat participants
-      await this.repository.addChatParticipant({
-        userId: creatorId,
-        chatId: createdChat.id,
-      });
       //   Add participants to chat participants
-      await Promise.all(
-        participantIds.map(async (userId) => {
-          await this.repository.addChatParticipant({
-            userId,
-            chatId: createdChat.id,
-          });
-        })
-      );
+      // await Promise.all(
+      //   participantIds.map(async (userId) => {
+      //     await this.repository.addChatParticipant({
+      //       userId,
+      //       chatId: createdChat.id,
+      //     });
+      //   })
+      // );
+      console.log("Participant IDs: ", participantIds);
+      participantIds.forEach(async (id) => {
+        await this.repository.addChatParticipant({
+          userId: id,
+          chatId: createdChat.id,
+        });
+      });
       return await this.singleChatFetcher({
         filters: [eq(chats.id, createdChat.id)],
       });
@@ -229,34 +231,40 @@ export class ChatService {
     creatorId,
     name,
     image,
-    participantId,
+    participantIds,
   }: {
     creatorId?: number;
     name: string;
     image?: string;
-    participantId?: number;
+    participantIds?: number[];
   }): Promise<ChatResponse> {
     // Check if user is logged in
-    if (!creatorId || !participantId) {
+    if (!creatorId || !participantIds) {
       return {
         errors: [
           {
             field: "root",
-            message: "You must be logged in to create a message",
+            message: "You must be logged in to create a chat",
           },
         ],
       };
     }
+    // filter out creator from participantIds
+    const participantIdsFiltered = participantIds.filter(
+      (id) => id !== creatorId
+    );
+    const chateeId = participantIdsFiltered[0];
+    console.log("Chatee Id: ", chateeId);
     const filters: SQL[] = [
       eq(chats.isGroupChat, false),
       or(
         and(
           eq(chats.creatorId, creatorId),
           eq(chatParticipants.chatId, chats.id),
-          eq(chatParticipants.userId, participantId)
+          eq(chatParticipants.userId, chateeId)
         ),
         and(
-          eq(chats.creatorId, participantId),
+          eq(chats.creatorId, chateeId),
           eq(chatParticipants.chatId, chats.id),
           eq(chatParticipants.userId, creatorId)
         )
@@ -266,7 +274,6 @@ export class ChatService {
     const chatExists = await this.repository.getAllChatsWithFilters({
       filters,
     });
-    console.log(chatExists);
     if (chatExists.length > 0) {
       return {
         chat: chatExists[0],
@@ -306,7 +313,7 @@ export class ChatService {
       });
       //   Add participants to chat participants
       await this.repository.addChatParticipant({
-        userId: participantId,
+        userId: chateeId,
         chatId: createdChat.id,
       });
       return await this.singleChatFetcher({
@@ -335,15 +342,14 @@ export class ChatService {
     chatId: number;
     name?: string;
     image?: string;
-  }): Promise<ConfirmResponse> {
+  }): Promise<ChatResponse> {
     // Check if user is logged in
     if (!creatorId) {
       return {
-        success: false,
         errors: [
           {
             field: "creatorId",
-            message: "You must be logged in to update a message",
+            message: "You must be logged in to update a chat",
           },
         ],
       };
@@ -357,9 +363,8 @@ export class ChatService {
         image,
       });
       // handle update error
-      if (!result || result.rowCount === 0) {
+      if (!result || result.length === 0) {
         return {
-          success: false,
           errors: [
             {
               field: "root",
@@ -370,12 +375,11 @@ export class ChatService {
         };
       }
       return {
-        success: true,
+        chat: result[0],
       };
     } catch (error) {
       console.error(error);
       return {
-        success: false,
         errors: [
           {
             field: "root",
@@ -400,12 +404,12 @@ export class ChatService {
         errors: [
           {
             field: "creatorId",
-            message: "You must be logged in to delete a message",
+            message: "You must be logged in to delete a chat",
           },
         ],
       };
     }
-    // Delete message
+    // Delete chat
     try {
       const result = await this.repository.deleteChat({
         chatId,
@@ -419,7 +423,7 @@ export class ChatService {
             {
               field: "root",
               message:
-                "Error deleting message, make sure you are deleting a message you sent and the message exists.",
+                "Error deleting chat, make sure you are deleting a chat you created and the chat exists.",
             },
           ],
         };
