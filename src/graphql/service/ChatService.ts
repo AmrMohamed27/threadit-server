@@ -1,7 +1,11 @@
 import { and, eq, or, SQL } from "drizzle-orm";
 import { chatParticipants, chats } from "../../database/schema";
-import { ChatResponse, ExtendedChat, UserResponse } from "../../types/inputs";
-import { ConfirmResponse } from "../../types/resolvers";
+import { ChatResponse, UserResponse } from "../../types/inputs";
+import {
+  ChatConfirmResponse,
+  ChatOperation,
+  ConfirmResponse,
+} from "../../types/resolvers";
 import { ChatRepository } from "../repositories/ChatRepository";
 import { UserRepository } from "../repositories/UserRepository";
 
@@ -64,20 +68,22 @@ export class ChatService {
       const chatIds = await this.repository.getChatIdsFromParticipant({
         userId,
       });
-      const result = await Promise.all(
-        chatIds.map(
-          async ({ chatId }) =>
-            await this.singleChatFetcher({ filters: [eq(chats.id, chatId)] })
-        )
-      );
-      let chatsArray: ExtendedChat[] = [];
-      result.forEach(({ chat }) => {
-        if (chat) chatsArray.push(chat);
-      });
-      return {
-        chatsArray,
-        count: chatsArray.length,
-      };
+      if (chatIds.length === 0) {
+        return {
+          chatsArray: [],
+          count: 0,
+          errors: [
+            {
+              field: "root",
+              message: "No chats found for user.",
+            },
+          ],
+        };
+      }
+      const filters: SQL[] = [];
+      chatIds.forEach(({ chatId }) => filters.push(eq(chats.id, chatId)));
+      const orFilter: SQL[] = [or(...filters)!];
+      return await this.chatsFetcher({ filters: orFilter });
     } catch (error) {
       console.error(error);
       return {
@@ -195,16 +201,6 @@ export class ChatService {
         };
       }
       const createdChat = result[0];
-      //   Add participants to chat participants
-      // await Promise.all(
-      //   participantIds.map(async (userId) => {
-      //     await this.repository.addChatParticipant({
-      //       userId,
-      //       chatId: createdChat.id,
-      //     });
-      //   })
-      // );
-      console.log("Participant IDs: ", participantIds);
       participantIds.forEach(async (id) => {
         await this.repository.addChatParticipant({
           userId: id,
@@ -254,7 +250,6 @@ export class ChatService {
       (id) => id !== creatorId
     );
     const chateeId = participantIdsFiltered[0];
-    console.log("Chatee Id: ", chateeId);
     const filters: SQL[] = [
       eq(chats.isGroupChat, false),
       or(
@@ -279,7 +274,7 @@ export class ChatService {
         chat: chatExists[0],
         errors: [
           {
-            field: "root",
+            field: "chat_exists",
             message: "You already have a chat with this user",
           },
         ],
@@ -396,11 +391,13 @@ export class ChatService {
   }: {
     creatorId?: number;
     chatId: number;
-  }): Promise<ConfirmResponse> {
+  }): Promise<ChatConfirmResponse> {
+    const operation: ChatOperation = { delete: true };
     // Check if user is logged in
     if (!creatorId) {
       return {
-        success: false,
+        operation,
+        chatId,
         errors: [
           {
             field: "creatorId",
@@ -411,6 +408,11 @@ export class ChatService {
     }
     // Delete chat
     try {
+      // First get the participant Ids to publish the update to them.
+      const participants = await this.repository.getChatParticipants({
+        chatId,
+      });
+      const participantIds = participants.map((p) => p.userId);
       const result = await this.repository.deleteChat({
         chatId,
         creatorId,
@@ -418,7 +420,8 @@ export class ChatService {
       // handle deletion error
       if (!result || result.rowCount === 0) {
         return {
-          success: false,
+          operation,
+          chatId,
           errors: [
             {
               field: "root",
@@ -429,12 +432,15 @@ export class ChatService {
         };
       }
       return {
-        success: true,
+        operation,
+        chatId,
+        participantIds,
       };
     } catch (error) {
       console.error(error);
       return {
-        success: false,
+        operation,
+        chatId,
         errors: [
           {
             field: "root",
@@ -451,7 +457,8 @@ export class ChatService {
   }: {
     chatId: number;
     participantId: number;
-  }): Promise<ConfirmResponse> {
+  }): Promise<ChatConfirmResponse> {
+    const operation: ChatOperation = { addParticipant: true };
     // Add participant to chat
     try {
       const result = await this.repository.addChatParticipant({
@@ -461,7 +468,8 @@ export class ChatService {
       // handle creation error
       if (!result || result.rowCount === 0) {
         return {
-          success: false,
+          operation,
+          chatId,
           errors: [
             {
               field: "root",
@@ -470,13 +478,20 @@ export class ChatService {
           ],
         };
       }
+      const participants = await this.repository.getChatParticipants({
+        chatId,
+      });
+      const participantIds = participants.map((p) => p.userId);
       return {
-        success: true,
+        operation,
+        chatId,
+        participantIds,
       };
     } catch (error) {
       console.error(error);
       return {
-        success: false,
+        operation,
+        chatId,
         errors: [
           {
             field: "root",
@@ -495,9 +510,14 @@ export class ChatService {
   }: {
     chatId: number;
     participantId: number;
-  }): Promise<ConfirmResponse> {
+  }): Promise<ChatConfirmResponse> {
+    const operation: ChatOperation = { removeParticipant: true };
     // Remove participant from chat
     try {
+      const participants = await this.repository.getChatParticipants({
+        chatId,
+      });
+      const participantIds = participants.map((p) => p.userId);
       const result = await this.repository.removeChatParticipant({
         userId: participantId,
         chatId,
@@ -505,7 +525,8 @@ export class ChatService {
       // handle creation error
       if (!result || result.rowCount === 0) {
         return {
-          success: false,
+          operation,
+          chatId,
           errors: [
             {
               field: "root",
@@ -515,12 +536,15 @@ export class ChatService {
         };
       }
       return {
-        success: true,
+        operation,
+        chatId,
+        participantIds,
       };
     } catch (error) {
       console.error(error);
       return {
-        success: false,
+        operation,
+        chatId,
         errors: [
           {
             field: "root",

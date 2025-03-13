@@ -87,14 +87,12 @@ export class MessageResolver {
     @Ctx() ctx: MyContext,
     @Arg("chatId", () => Int, { nullable: true }) chatId?: number
   ) {
-    console.log(ctx.req.session);
     const userId = ctx.req.session.userId;
     // Handle filtering here
     if (userId && chatId && response.message) {
       // Only return the message if it's relevant to this user
       // Case 1: the user is the sender of the message so we don't need to check the chat
       if (response.message.senderId === userId) {
-        console.log("Creator for: ", response.message?.content);
         return response;
       }
       // Case 2: The user is not the sender so we need to check if the user is a participant in the chat
@@ -102,18 +100,14 @@ export class MessageResolver {
         userId,
         chatId,
       });
-      console.log("Result for Check: ", result);
       if (result.success) {
-        console.log("Participant for: ", response.message?.content);
         return response;
       }
       // Return null or undefined to filter out this message
-      console.log("Null");
       return null;
     }
 
-    // If no userId filter or message passes the filter, return it
-    console.log("None for: ", response.message?.content);
+    // If no userId filter or no chat id or no message response, return null
     return response;
   }
 }

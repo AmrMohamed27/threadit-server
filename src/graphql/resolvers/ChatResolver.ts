@@ -16,7 +16,11 @@ import {
   UpdateChatInput,
   UserResponse,
 } from "../../types/inputs";
-import { ConfirmResponse, MyContext } from "../../types/resolvers";
+import {
+  ChatConfirmResponse,
+  ConfirmResponse,
+  MyContext,
+} from "../../types/resolvers";
 
 @Resolver()
 export class ChatResolver {
@@ -95,7 +99,7 @@ export class ChatResolver {
         participantIds,
       });
     }
-    if (!result.errors && result.chat) {
+    if (result.chat) {
       const { chat: joinedChat } = await ctx.Services.chats.fetchChatById({
         chatId: result.chat.id,
       });
@@ -128,35 +132,35 @@ export class ChatResolver {
   }
 
   // Mutation to delete a chat
-  @Mutation(() => ConfirmResponse)
+  @Mutation(() => ChatConfirmResponse)
   async deleteChat(
     @Arg("chatId") chatId: number,
     @Ctx() ctx: MyContext
-  ): Promise<ConfirmResponse> {
+  ): Promise<ChatConfirmResponse> {
     const creatorId = ctx.req.session.userId;
     const result = await ctx.Services.chats.deleteChat({
       chatId,
       creatorId,
     });
-    if (result.success) {
+    if (!result.errors) {
       await ctx.pubSub.publish(SubscriptionTopics.CHAT_DELETED, result);
     }
     return result;
   }
 
   //   Mutation to add a participant to a chat
-  @Mutation(() => ConfirmResponse)
+  @Mutation(() => ChatConfirmResponse)
   async addChatParticipant(
     @Arg("options") options: AddChatParticipantInput,
     @Ctx() ctx: MyContext
-  ): Promise<ConfirmResponse> {
+  ): Promise<ChatConfirmResponse> {
     // Destructure input
     const { chatId, participantId } = options;
     const result = await ctx.Services.chats.addChatParticipant({
       chatId,
       participantId,
     });
-    if (result.success) {
+    if (!result.errors) {
       await ctx.pubSub.publish(
         SubscriptionTopics.CHAT_PARTICIPANT_ADDED,
         result
@@ -166,18 +170,18 @@ export class ChatResolver {
   }
 
   //   Mutation to remove a participant from a chat
-  @Mutation(() => ConfirmResponse)
+  @Mutation(() => ChatConfirmResponse)
   async removeChatParticipant(
     @Arg("options") options: AddChatParticipantInput,
     @Ctx() ctx: MyContext
-  ): Promise<ConfirmResponse> {
+  ): Promise<ChatConfirmResponse> {
     // Destructure input
     const { chatId, participantId } = options;
     const result = await ctx.Services.chats.removeChatParticipant({
       chatId,
       participantId,
     });
-    if (result.success) {
+    if (!result.errors) {
       await ctx.pubSub.publish(
         SubscriptionTopics.CHAT_PARTICIPANT_REMOVED,
         result
@@ -189,13 +193,7 @@ export class ChatResolver {
   // Subscription to listen for new chats
   @Subscription(() => ChatResponse, {
     subscribe: () =>
-      redisRealPubSub.asyncIterator([
-        SubscriptionTopics.NEW_CHAT,
-        SubscriptionTopics.CHAT_UPDATED,
-        SubscriptionTopics.CHAT_DELETED,
-        SubscriptionTopics.CHAT_PARTICIPANT_ADDED,
-        SubscriptionTopics.CHAT_PARTICIPANT_REMOVED,
-      ]),
+      redisRealPubSub.asyncIterator([SubscriptionTopics.NEW_CHAT]),
   })
   async newChat(@Root() response: ChatResponse, @Ctx() ctx: MyContext) {
     const userId = ctx.req.session.userId;
@@ -220,5 +218,28 @@ export class ChatResolver {
 
     // If no userId filter or chat passes the filter, return it
     return response;
+  }
+
+  // Subscription to listen for chat updates
+  @Subscription(() => ChatConfirmResponse, {
+    subscribe: () =>
+      redisRealPubSub.asyncIterator([
+        SubscriptionTopics.CHAT_UPDATED,
+        SubscriptionTopics.CHAT_DELETED,
+        SubscriptionTopics.CHAT_PARTICIPANT_ADDED,
+        SubscriptionTopics.CHAT_PARTICIPANT_REMOVED,
+      ]),
+  })
+  async chatUpdates(
+    @Root() response: ChatConfirmResponse,
+    @Ctx() ctx: MyContext
+  ) {
+    const userId = ctx.req.session.userId;
+    const { operation, participantIds, errors } = response;
+    if (userId && operation && participantIds && !errors) {
+      return response;
+    } else {
+      return null;
+    }
   }
 }

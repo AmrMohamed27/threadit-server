@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Field, ObjectType, registerEnumType } from "type-graphql";
+import { Field, Int, ObjectType, registerEnumType } from "type-graphql";
 import { db } from "../database/db";
 import { Services } from "../graphql/service";
 import { redisClient } from "../redis";
@@ -26,6 +26,29 @@ export class FieldError {
 export class ConfirmResponse {
   @Field(() => Boolean)
   success: boolean;
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
+}
+
+@ObjectType()
+export class ChatOperation {
+  @Field(() => Boolean, { nullable: true })
+  delete?: boolean;
+  @Field(() => Boolean, { nullable: true })
+  addParticipant?: boolean;
+  @Field(() => Boolean, { nullable: true })
+  removeParticipant?: boolean;
+  @Field(() => Boolean, { nullable: true })
+  update?: boolean;
+}
+@ObjectType()
+export class ChatConfirmResponse {
+  @Field(() => ChatOperation)
+  operation: ChatOperation;
+  @Field()
+  chatId: number;
+  @Field(() => [Int], { nullable: true })
+  participantIds?: number[];
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
 }

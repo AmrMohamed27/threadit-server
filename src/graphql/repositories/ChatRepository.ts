@@ -1,4 +1,4 @@
-import { and, count, eq, SQL } from "drizzle-orm";
+import { and, count, desc, eq, SQL } from "drizzle-orm";
 import { db } from "../../database/db";
 import { chatParticipants, chats } from "../../database/schema";
 import { chatCreator, chatSelection } from "../../lib/utils";
@@ -17,7 +17,8 @@ export class ChatRepository {
         chatParticipants.chatId,
         chatParticipants.lastReadMessageId,
         chatCreator.id
-      );
+      )
+      .orderBy(desc(chats.updatedAt));
   }
 
   static async getChatIdsFromParticipant({ userId }: { userId: number }) {
