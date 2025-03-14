@@ -1,19 +1,16 @@
-import {
-  Arg,
-  Ctx,
-  Int,
-  Mutation,
-  Resolver,
-  Root,
-  Subscription,
-} from "type-graphql";
+import { Arg, Ctx, Mutation, Resolver, Root, Subscription } from "type-graphql";
+import { buildMessageNotification } from "../../lib/utils";
 import { redisRealPubSub, SubscriptionTopics } from "../../redis/pubsub";
 import {
   CreateMessageInput,
   MessageResponse,
   UpdateMessageInput,
 } from "../../types/inputs";
-import { ConfirmResponse, MyContext } from "../../types/resolvers";
+import {
+  ConfirmResponse,
+  MyContext,
+  NotificationResponse,
+} from "../../types/resolvers";
 
 @Resolver()
 export class MessageResolver {
@@ -33,7 +30,11 @@ export class MessageResolver {
       content,
       media,
     });
-    await ctx.pubSub.publish("NEW_MESSAGE", result);
+    await ctx.pubSub.publish(SubscriptionTopics.NEW_MESSAGE, result);
+    await ctx.pubSub.publish(
+      SubscriptionTopics.DIRECT_MESSAGE_NOTIFICATION,
+      result
+    );
 
     return result;
   }
@@ -78,20 +79,17 @@ export class MessageResolver {
     subscribe: () =>
       redisRealPubSub.asyncIterator([SubscriptionTopics.NEW_MESSAGE]),
   })
-  async newMessage(
-    @Root() response: MessageResponse,
-    @Ctx() ctx: MyContext,
-    @Arg("chatId", () => Int, { nullable: true }) chatId?: number
-  ) {
+  async newMessage(@Root() response: MessageResponse, @Ctx() ctx: MyContext) {
     const userId = ctx.req.session.userId;
     // Handle filtering here
-    if (userId && chatId && response.message) {
+    if (userId && response.message) {
       // Only return the message if it's relevant to this user
       // Case 1: the user is the sender of the message so we don't need to check the chat
       if (response.message.senderId === userId) {
         return response;
       }
       // Case 2: The user is not the sender so we need to check if the user is a participant in the chat
+      const chatId = response.message.chatId;
       const result = await ctx.Services.chats.checkChatParticipant({
         userId,
         chatId,
@@ -103,7 +101,7 @@ export class MessageResolver {
       return null;
     }
 
-    // If no userId filter or no chat id or no message response, return null
+    // If no userId or no message response, return the message for debugging
     return response;
   }
 }

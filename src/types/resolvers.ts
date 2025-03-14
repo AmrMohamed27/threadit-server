@@ -61,7 +61,7 @@ export enum VoteOptionsEnum {
 }
 
 registerEnumType(VoteOptionsEnum, {
-  name: "VoteOptions", // This name will be used in GraphQL schema
+  name: "VoteOptions",
   description: "Represents the user's vote status on a post",
 });
 
@@ -173,4 +173,39 @@ export interface CommunityQueryResult {
     confirmed: boolean;
   } | null;
   isJoined: number;
+}
+
+// Define notification types
+export enum NotificationEnum {
+  NEW_REPLY = "NEW_REPLY",
+  POST_ACTIVITY = "POST_ACTIVITY",
+  DIRECT_MESSAGE = "DIRECT_MESSAGE",
+}
+
+registerEnumType(NotificationEnum, {
+  name: "Notifications",
+  description: "Represents the different types of notifications.",
+});
+@ObjectType()
+export class NotificationResponse {
+  @Field()
+  id: number;
+  @Field(() => NotificationEnum)
+  type: NotificationEnum;
+  @Field()
+  userId: number;
+  @Field()
+  senderId: number;
+  @Field()
+  senderName: string;
+  @Field()
+  content: string;
+  @Field()
+  entityId: number;
+  @Field()
+  entityType: "Post" | "Comment" | "Message";
+  @Field()
+  isRead: Boolean;
+  @Field(() => String, { nullable: true })
+  createdAt: Date | null;
 }

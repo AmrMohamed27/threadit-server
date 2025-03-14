@@ -15,6 +15,7 @@ import {
 import {
   ExtendedComment,
   extendedCommunity,
+  ExtendedMessage,
   ExtendedPost,
   UserResponse,
 } from "../types/inputs";
@@ -22,6 +23,8 @@ import {
   CommentQueryResult,
   CommunityQueryResult,
   newSelectionProps,
+  NotificationEnum,
+  NotificationResponse,
   PostQueryResult,
   SortOptions,
   VoteOptions,
@@ -417,5 +420,37 @@ export function registerErrorHandler(error: any): UserResponse {
         message: error.message,
       },
     ],
+  };
+}
+
+export function buildMessageNotification(
+  userId: number,
+  message?: ExtendedMessage
+): NotificationResponse {
+  if (!message) {
+    return {
+      id: 0,
+      type: NotificationEnum.DIRECT_MESSAGE,
+      userId,
+      senderId: 0,
+      senderName: "",
+      content: "",
+      entityId: 0,
+      entityType: "Message",
+      isRead: false,
+      createdAt: null,
+    };
+  }
+  return {
+    id: message.id,
+    type: NotificationEnum.DIRECT_MESSAGE,
+    userId,
+    senderId: message.senderId,
+    senderName: message.sender?.name ?? "Sender",
+    content: message.content,
+    entityId: message.id,
+    entityType: "Message",
+    isRead: false,
+    createdAt: message.createdAt,
   };
 }
