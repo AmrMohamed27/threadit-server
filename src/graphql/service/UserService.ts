@@ -8,6 +8,10 @@ import { registerErrorHandler } from "../../lib/utils";
 import { UserRepository } from "../repositories/UserRepository";
 import { UserResponse } from "../../types/inputs";
 import { ConfirmResponse } from "../../types/resolvers";
+import {
+  confirmEmailTemplate,
+  resetPasswordTemplate,
+} from "../../email/emailTemplates";
 
 export class UserService {
   constructor(private repository: typeof UserRepository) {}
@@ -82,7 +86,7 @@ export class UserService {
           ],
         };
       }
-      const { email, confirmed } = result[0];
+      const { email, confirmed, name } = result[0];
       if (confirmed === true) {
         return {
           success: false,
@@ -106,7 +110,7 @@ export class UserService {
       await sendEmail({
         to: email,
         subject: "Confirm your account",
-        text: `Your confirmation code is: ${confirmationCode}`,
+        html: confirmEmailTemplate({ name, confirmationCode }),
       });
       return {
         success: true,
@@ -239,7 +243,10 @@ export class UserService {
         errors: [{ field: "password", message: "Invalid credentials" }],
       };
     }
-
+    // Request confirmation code if the user is not confirmed
+    if (!user.confirmed) {
+      await this.requestConfirmationCode({ userId: user.id });
+    }
     // Return user if successful
     return { user };
   }
@@ -280,7 +287,10 @@ export class UserService {
       await sendEmail({
         to: email,
         subject: "Password Reset",
-        text: `Visit this link to reset your password: ${env.CORS_ORIGIN_FRONTEND}/forgot-password/${resetToken}?email=${email}`,
+        html: resetPasswordTemplate({
+          name: result[0].name,
+          actionUrl: `${env.CORS_ORIGIN_FRONTEND}/forgot-password/${resetToken}?email=${email}`,
+        }),
       });
       return {
         success: true,

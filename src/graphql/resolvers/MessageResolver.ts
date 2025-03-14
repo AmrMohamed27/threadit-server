@@ -76,11 +76,7 @@ export class MessageResolver {
   // Subscription to listen for new messages
   @Subscription(() => MessageResponse, {
     subscribe: () =>
-      redisRealPubSub.asyncIterator([
-        SubscriptionTopics.NEW_MESSAGE,
-        SubscriptionTopics.MESSAGE_UPDATED,
-        SubscriptionTopics.MESSAGE_DELETED,
-      ]),
+      redisRealPubSub.asyncIterator([SubscriptionTopics.NEW_MESSAGE]),
   })
   async newMessage(
     @Root() response: MessageResponse,

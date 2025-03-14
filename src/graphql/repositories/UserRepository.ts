@@ -30,7 +30,11 @@ export class UserRepository {
   }
   static async getUserEmailAndConfirmed({ userId }: { userId: number }) {
     return await db
-      .select({ email: users.email, confirmed: users.confirmed })
+      .select({
+        email: users.email,
+        confirmed: users.confirmed,
+        name: users.name,
+      })
       .from(users)
       .where(eq(users.id, userId));
   }

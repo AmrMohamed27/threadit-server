@@ -12,16 +12,16 @@ const transporter = nodemailer.createTransport({
 interface SendEmailParams {
   to: string;
   subject: string;
-  text: string;
+  html: string;
 }
 
-export const sendEmail = async ({ to, subject, text }: SendEmailParams) => {
+export const sendEmail = async ({ to, subject, html }: SendEmailParams) => {
   try {
     const mailOptions = {
       from: env.GOOGLE_APP_HOST,
       to,
       subject,
-      text,
+      html,
     };
 
     const info = await transporter.sendMail(mailOptions);
