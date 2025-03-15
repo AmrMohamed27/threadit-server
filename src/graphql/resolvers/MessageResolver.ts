@@ -1,5 +1,4 @@
 import { Arg, Ctx, Mutation, Resolver, Root, Subscription } from "type-graphql";
-import { buildMessageNotification } from "../../lib/utils";
 import { redisRealPubSub, SubscriptionTopics } from "../../redis/pubsub";
 import {
   CreateMessageInput,
@@ -8,8 +7,7 @@ import {
 } from "../../types/inputs";
 import {
   ConfirmResponse,
-  MyContext,
-  NotificationResponse,
+  MyContext
 } from "../../types/resolvers";
 
 @Resolver()
