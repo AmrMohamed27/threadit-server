@@ -6,8 +6,9 @@
     "start": "ts-node src/index.ts",
     "watch": "tsc -w",
     "dev": "nodemon dist/index.js",
-    "typeorm": "typeorm-ts-node-commonjs",
-    "dev:all": "concurrently \"npm run watch\" \"npm run dev\""
+    "startServer": "node dist/index.js",
+    "dev:all": "concurrently \"npm run watch\" \"npm run dev\"",
+    "db:migrate": "npx drizzle-kit push"
   },
   "keywords": [],
   "author": "",
