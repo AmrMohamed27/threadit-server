@@ -30,7 +30,7 @@ let MessageResolver = class MessageResolver {
     createMessage(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { chatId, content, media } = options;
-            const senderId = ctx.req.session.userId;
+            const senderId = ctx.userId;
             const result = yield ctx.Services.messages.createMessage({
                 senderId,
                 chatId,
@@ -45,7 +45,7 @@ let MessageResolver = class MessageResolver {
     updateMessage(options, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const { content, messageId } = options;
-            const senderId = ctx.req.session.userId;
+            const senderId = ctx.userId;
             const result = yield ctx.Services.messages.updateMessage({
                 messageId,
                 content,
@@ -57,7 +57,7 @@ let MessageResolver = class MessageResolver {
     }
     deleteMessage(messageId, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const senderId = ctx.req.session.userId;
+            const senderId = ctx.userId;
             const result = yield ctx.Services.messages.deleteMessage({
                 messageId,
                 senderId,
@@ -70,7 +70,7 @@ let MessageResolver = class MessageResolver {
     }
     newMessage(response, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             if (userId && response.message) {
                 if (response.message.senderId === userId) {
                     return response;

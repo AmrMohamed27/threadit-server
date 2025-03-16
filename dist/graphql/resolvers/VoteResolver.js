@@ -29,7 +29,7 @@ let VoteResolver = class VoteResolver {
     createVote(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { isUpvote, postId, commentId } = options;
-            const authorId = ctx.req.session.userId;
+            const authorId = ctx.userId;
             return yield ctx.Services.votes.createVote({
                 postId,
                 commentId,
@@ -41,14 +41,14 @@ let VoteResolver = class VoteResolver {
     deleteVote(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { postId, commentId } = options;
-            const authorId = ctx.req.session.userId;
+            const authorId = ctx.userId;
             return yield ctx.Services.votes.deleteVote({ postId, commentId, authorId });
         });
     }
     updateVote(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { postId, commentId, isUpvote } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.votes.updateVote({
                 userId,
                 isUpvote,

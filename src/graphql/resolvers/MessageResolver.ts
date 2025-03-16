@@ -5,10 +5,7 @@ import {
   MessageResponse,
   UpdateMessageInput,
 } from "../../types/inputs";
-import {
-  ConfirmResponse,
-  MyContext
-} from "../../types/resolvers";
+import { ConfirmResponse, MyContext } from "../../types/resolvers";
 
 @Resolver()
 export class MessageResolver {
@@ -21,7 +18,7 @@ export class MessageResolver {
     // Destructure input
     const { chatId, content, media } = options;
     // Get author id from session
-    const senderId = ctx.req.session.userId;
+    const senderId = ctx.userId;
     const result = await ctx.Services.messages.createMessage({
       senderId,
       chatId,
@@ -45,7 +42,7 @@ export class MessageResolver {
   ): Promise<MessageResponse> {
     // Destructure input
     const { content, messageId } = options;
-    const senderId = ctx.req.session.userId;
+    const senderId = ctx.userId;
     const result = await ctx.Services.messages.updateMessage({
       messageId,
       content,
@@ -61,7 +58,7 @@ export class MessageResolver {
     @Arg("messageId") messageId: number,
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
-    const senderId = ctx.req.session.userId;
+    const senderId = ctx.userId;
     const result = await ctx.Services.messages.deleteMessage({
       messageId,
       senderId,
@@ -78,7 +75,7 @@ export class MessageResolver {
       redisRealPubSub.asyncIterator([SubscriptionTopics.NEW_MESSAGE]),
   })
   async newMessage(@Root() response: MessageResponse, @Ctx() ctx: MyContext) {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     // Handle filtering here
     if (userId && response.message) {
       // Only return the message if it's relevant to this user

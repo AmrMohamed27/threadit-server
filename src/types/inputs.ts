@@ -7,7 +7,7 @@ import {
   ReturnedPost,
   ReturnedUser,
   ReturnedUserWithoutPassword,
-  ReturnedVote
+  ReturnedVote,
 } from "../database/schema";
 import { Chat } from "../graphql/types/Chat";
 import { Comment } from "../graphql/types/Comment";
@@ -362,6 +362,8 @@ export class UserResponse {
   user?: ReturnedUser;
   @Field(() => [User], { nullable: true })
   userArray?: ReturnedUser[];
+  @Field(() => String, { nullable: true })
+  token?: string;
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
   @Field(() => Int, { nullable: true })

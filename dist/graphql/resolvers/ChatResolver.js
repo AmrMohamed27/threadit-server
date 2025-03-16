@@ -29,7 +29,7 @@ const resolvers_1 = require("../../types/resolvers");
 let ChatResolver = class ChatResolver {
     getUserChats(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.chats.fetchUserChats({ userId });
         });
     }
@@ -45,7 +45,7 @@ let ChatResolver = class ChatResolver {
     }
     checkChatParticipant(chatId, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.chats.checkChatParticipant({
                 userId,
                 chatId,
@@ -60,7 +60,7 @@ let ChatResolver = class ChatResolver {
     createChat(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { name, image, isGroupChat, participantIds } = options;
-            const creatorId = ctx.req.session.userId;
+            const creatorId = ctx.userId;
             let result;
             if (isGroupChat === true) {
                 result = yield ctx.Services.chats.createGroupChat({
@@ -93,7 +93,7 @@ let ChatResolver = class ChatResolver {
     updateChat(options, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const { chatId, image, name } = options;
-            const creatorId = ctx.req.session.userId;
+            const creatorId = ctx.userId;
             const result = yield ctx.Services.chats.updateChat({
                 chatId,
                 name,
@@ -106,7 +106,7 @@ let ChatResolver = class ChatResolver {
     }
     deleteChat(chatId, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const creatorId = ctx.req.session.userId;
+            const creatorId = ctx.userId;
             const result = yield ctx.Services.chats.deleteChat({
                 chatId,
                 creatorId,
@@ -145,7 +145,7 @@ let ChatResolver = class ChatResolver {
     }
     newChat(response, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             if (userId && response.chat) {
                 if (response.chat.creatorId === userId) {
                     return response;
@@ -164,7 +164,7 @@ let ChatResolver = class ChatResolver {
     }
     chatUpdates(response, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             const { operation, participantIds, errors } = response;
             if (userId && operation && participantIds && !errors) {
                 return response;

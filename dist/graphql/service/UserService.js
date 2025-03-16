@@ -21,9 +21,22 @@ const emailService_1 = require("../../email/emailService");
 const env_1 = require("../../env");
 const utils_1 = require("../../lib/utils");
 const emailTemplates_1 = require("../../email/emailTemplates");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 class UserService {
     constructor(repository) {
         this.repository = repository;
+    }
+    verifyJwt(token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
+                return decoded;
+            }
+            catch (error) {
+                console.error("Error verifying JWT:", error);
+                return null;
+            }
+        });
     }
     registerUser(_a) {
         return __awaiter(this, arguments, void 0, function* ({ email, password, name, }) {
@@ -46,7 +59,10 @@ class UserService {
                     name,
                 });
                 const user = newUser[0];
-                return { user };
+                const token = jsonwebtoken_1.default.sign({ userId: user.id }, env_1.env.JWT_SECRET, {
+                    expiresIn: "30d",
+                });
+                return { user, token };
             }
             catch (error) {
                 return (0, utils_1.registerErrorHandler)(error);
@@ -219,7 +235,10 @@ class UserService {
             if (!user.confirmed) {
                 yield this.requestConfirmationCode({ userId: user.id });
             }
-            return { user };
+            const token = jsonwebtoken_1.default.sign({ userId: user.id }, env_1.env.JWT_SECRET, {
+                expiresIn: "30d",
+            });
+            return { user, token };
         });
     }
     requestPasswordReset(_a) {

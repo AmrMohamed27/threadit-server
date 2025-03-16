@@ -20,7 +20,7 @@ export class CommentResolver {
   ): Promise<CommentResponse> {
     // Destructure input
     const { userId: passedUserId, sortBy, page, limit } = options;
-    const loggedInUserId = ctx.req.session.userId;
+    const loggedInUserId = ctx.userId;
     const userId = passedUserId ? passedUserId : loggedInUserId;
     return await ctx.Services.comments.fetchUserComments({
       userId,
@@ -39,7 +39,7 @@ export class CommentResolver {
     // Destructure input
     const { postId, sortBy, searchTerm } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.comments.fetchPostComments({
       userId,
       sortBy,
@@ -57,7 +57,7 @@ export class CommentResolver {
     // Destructure input
     const { commentId } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.comments.fetchCommentById({
       userId,
       commentId,
@@ -73,7 +73,7 @@ export class CommentResolver {
     // Destructure input
     const { content, postId, parentCommentId } = options;
     // Get author id from session
-    const authorId = ctx.req.session.userId;
+    const authorId = ctx.userId;
     return await ctx.Services.comments.createComment({
       content,
       authorId,
@@ -87,7 +87,7 @@ export class CommentResolver {
     @Ctx() ctx: MyContext,
     @Arg("id") id: number
   ): Promise<ConfirmResponse> {
-    const authorId = ctx.req.session.userId;
+    const authorId = ctx.userId;
     return await ctx.Services.comments.deleteComment({
       authorId,
       commentId: id,
@@ -102,7 +102,7 @@ export class CommentResolver {
     // Destructure input
     const { id, content } = options;
     // Get author id from session
-    const authorId = ctx.req.session.userId;
+    const authorId = ctx.userId;
     return await ctx.Services.comments.updateComment({
       authorId,
       commentId: id,

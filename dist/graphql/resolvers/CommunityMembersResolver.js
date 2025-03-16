@@ -29,14 +29,14 @@ let CommunityMembersResolver = class CommunityMembersResolver {
     joinCommunity(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { communityId } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.communityMembers.joinCommunity(communityId, userId);
         });
     }
     leaveCommunity(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { communityId } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.communityMembers.leaveCommunity(communityId, userId);
         });
     }

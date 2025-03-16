@@ -27,19 +27,19 @@ const resolvers_1 = require("../../types/resolvers");
 let HiddenPostsResolver = class HiddenPostsResolver {
     hidePost(postId, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.hiddenPosts.hidePost({ postId, userId });
         });
     }
     unhidePost(postId, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.hiddenPosts.unhidePost({ postId, userId });
         });
     }
     getHiddenPosts(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.hiddenPosts.fetchHiddenPostsIds({ userId });
         });
     }

@@ -12,9 +12,20 @@ import {
   confirmEmailTemplate,
   resetPasswordTemplate,
 } from "../../email/emailTemplates";
+import jwt from "jsonwebtoken";
 
 export class UserService {
   constructor(private repository: typeof UserRepository) {}
+
+  async verifyJwt(token: string) {
+    try {
+      const decoded = jwt.verify(token, env.JWT_SECRET);
+      return decoded;
+    } catch (error) {
+      console.error("Error verifying JWT:", error);
+      return null;
+    }
+  }
 
   async registerUser({
     email,
@@ -49,8 +60,12 @@ export class UserService {
       });
       // Store user id in session
       const user = newUser[0];
+      // Generate a jwt token for the user
+      const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
+        expiresIn: "30d",
+      });
       // Return the new user
-      return { user };
+      return { user, token };
       //   Catch errors
     } catch (error) {
       return registerErrorHandler(error);
@@ -209,7 +224,7 @@ export class UserService {
     userId?: number;
     email: string;
     password: string;
-  }) {
+  }): Promise<UserResponse> {
     // Check if user is already logged in
     if (userId) {
       return {
@@ -247,8 +262,12 @@ export class UserService {
     if (!user.confirmed) {
       await this.requestConfirmationCode({ userId: user.id });
     }
+    // Generate a new token for the user
+    const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
+      expiresIn: "30d",
+    });
     // Return user if successful
-    return { user };
+    return { user, token };
   }
 
   async requestPasswordReset({

@@ -8,7 +8,7 @@ export class HiddenPostsResolver {
     @Arg("postId") postId: number,
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.hiddenPosts.hidePost({ postId, userId });
   }
 
@@ -17,14 +17,14 @@ export class HiddenPostsResolver {
     @Arg("postId") postId: number,
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.hiddenPosts.unhidePost({ postId, userId });
   }
 
   @Query(() => [Number]) // Returns an array of hidden post IDs
   async getHiddenPosts(@Ctx() ctx: MyContext) {
     // Check if user is logged in
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.hiddenPosts.fetchHiddenPostsIds({ userId });
   }
 }

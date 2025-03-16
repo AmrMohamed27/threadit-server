@@ -10,7 +10,7 @@ export class SavedPostsResolver {
     @Arg("postId") postId: number,
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.savedPosts.savePost({ postId, userId });
   }
 
@@ -20,7 +20,7 @@ export class SavedPostsResolver {
     @Arg("postId") postId: number,
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.savedPosts.unsavePost({ postId, userId });
   }
 
@@ -28,7 +28,7 @@ export class SavedPostsResolver {
   @Query(() => [Number])
   async getSavedPostsIds(@Ctx() ctx: MyContext) {
     // Check if user is logged in
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.savedPosts.getSavedPostIds({ userId });
   }
 
@@ -41,7 +41,7 @@ export class SavedPostsResolver {
     // Destructure input
     const { page, limit, sortBy } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.posts.fetchUserSavedPosts({
       userId,
       page,

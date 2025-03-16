@@ -29,7 +29,7 @@ let PostResolver = class PostResolver {
     getAllPosts(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { page, limit, sortBy } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.posts.fetchAllPosts({
                 sortBy,
                 userId,
@@ -41,7 +41,7 @@ let PostResolver = class PostResolver {
     getUserCommunityPosts(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { page, limit, sortBy } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.posts.fetchUserCommunityPosts({
                 sortBy,
                 userId,
@@ -53,7 +53,7 @@ let PostResolver = class PostResolver {
     getCommunityPosts(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { communityId, page, limit, sortBy } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.posts.fetchCommunityPosts({
                 sortBy,
                 userId,
@@ -66,7 +66,7 @@ let PostResolver = class PostResolver {
     searchPosts(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { searchTerm, page, limit, sortBy } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.posts.fetchSearchPosts({
                 sortBy,
                 userId,
@@ -79,7 +79,7 @@ let PostResolver = class PostResolver {
     getUserPosts(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { userId, page, limit, sortBy = "New" } = options;
-            const authorId = userId ? userId : ctx.req.session.userId;
+            const authorId = userId ? userId : ctx.userId;
             return yield ctx.Services.posts.fetchUserPosts({
                 sortBy,
                 userId,
@@ -92,7 +92,7 @@ let PostResolver = class PostResolver {
     getUserHiddenPosts(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { page, limit, sortBy } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.posts.fetchUserHiddenPosts({
                 sortBy,
                 userId,
@@ -104,7 +104,7 @@ let PostResolver = class PostResolver {
     getUserVotedPosts(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { sortBy, limit, page, isUpvoted } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.posts.fetchUserVotedPosts({
                 sortBy,
                 userId,
@@ -116,7 +116,7 @@ let PostResolver = class PostResolver {
     }
     getPost(ctx, id) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.posts.fetchPostById({
                 postId: id,
                 userId,
@@ -126,7 +126,7 @@ let PostResolver = class PostResolver {
     createPost(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { title, content, communityId, media } = options;
-            const authorId = ctx.req.session.userId;
+            const authorId = ctx.userId;
             return yield ctx.Services.posts.createPost({
                 title,
                 content,
@@ -138,7 +138,7 @@ let PostResolver = class PostResolver {
     }
     deletePost(ctx, id) {
         return __awaiter(this, void 0, void 0, function* () {
-            const authorId = ctx.req.session.userId;
+            const authorId = ctx.userId;
             return yield ctx.Services.posts.deletePost({
                 postId: id,
                 authorId,
@@ -148,7 +148,7 @@ let PostResolver = class PostResolver {
     updatePost(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { id, title, content } = options;
-            const authorId = ctx.req.session.userId;
+            const authorId = ctx.userId;
             return yield ctx.Services.posts.updatePost({
                 title,
                 content,

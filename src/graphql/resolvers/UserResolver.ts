@@ -22,15 +22,11 @@ export class UserResolver {
   ): Promise<UserResponse> {
     // Destructure email, password, and name from userData
     const { email, password, name } = userData;
-    const result = await ctx.Services.users.registerUser({
+    return await ctx.Services.users.registerUser({
       email,
       password,
       name,
     });
-    if (result.user) {
-      ctx.req.session.userId = result.user.id;
-    }
-    return result;
   }
   // Request a confirmation Code
   @Mutation(() => ConfirmResponse)
@@ -38,7 +34,7 @@ export class UserResolver {
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
     // Get email
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.users.requestConfirmationCode({ userId });
   }
 
@@ -48,7 +44,7 @@ export class UserResolver {
     @Ctx() ctx: MyContext,
     @Arg("code") code: string
   ): Promise<ConfirmResponse> {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.users.confirmUser({ userId, code });
   }
 
@@ -58,19 +54,14 @@ export class UserResolver {
     @Ctx() ctx: MyContext,
     @Arg("userData") userData: LoginInput
   ): Promise<UserResponse> {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     // Destructure email and password from userData
     const { email, password } = userData;
-    const result = await ctx.Services.users.loginUser({
+    return await ctx.Services.users.loginUser({
       userId,
       email,
       password,
     });
-    if (result.user) {
-      // Store user id in session
-      ctx.req.session.userId = result.user.id;
-    }
-    return result;
   }
 
   // Request a password reset
@@ -79,7 +70,7 @@ export class UserResolver {
     @Ctx() ctx: MyContext,
     @Arg("email") email: string
   ): Promise<ConfirmResponse> {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.users.requestPasswordReset({
       userId,
       email,
@@ -114,31 +105,22 @@ export class UserResolver {
 
   // Logout a user
   @Mutation(() => Boolean)
-  async logoutUser(@Ctx() ctx: MyContext): Promise<boolean> {
-    return new Promise((resolve) =>
-      ctx.req.session.destroy((err) => {
-        ctx.res.clearCookie(env.COOKIE_NAME);
-        if (err) {
-          console.error(err);
-          resolve(false);
-        }
-        resolve(true);
-      })
-    );
+  async logoutUser(): Promise<boolean> {
+    return true;
   }
 
   // Toggle Confirmed field in users table
   @Mutation(() => Boolean)
   async toggleConfirmed(@Ctx() ctx: MyContext) {
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.users.toggleConfirmed({ userId });
   }
 
   // Me query
   @Query(() => UserResponse)
   async me(@Ctx() ctx: MyContext): Promise<UserResponse> {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.users.me({ userId });
   }
 
@@ -181,7 +163,7 @@ export class UserResolver {
     // Destructure email and password from userData
     const { image } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.users.updateUser({ image, userId });
   }
 
@@ -194,16 +176,7 @@ export class UserResolver {
     // Destructure email and password from userData
     const { name } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.users.updateUser({ name, userId });
-  }
-
-  // Mutation to delete a user, REMOVE IMMEDIATELY
-  @Mutation(() => ConfirmResponse)
-  async deleteUser(
-    @Ctx() ctx: MyContext,
-    @Arg("id", () => Int) id: number
-  ): Promise<ConfirmResponse> {
-    return await ctx.Services.users.deleteUser({ userId: id });
   }
 }

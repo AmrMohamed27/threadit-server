@@ -25,7 +25,7 @@ export class PostResolver {
     // Destructure input
     const { page, limit, sortBy } = options;
     // Get user id from session if logged in
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.posts.fetchAllPosts({
       sortBy,
       userId,
@@ -43,7 +43,7 @@ export class PostResolver {
     // Destructure input
     const { page, limit, sortBy } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     // Returns all posts if user is not logged in, else returns posts from only the user's communities
     return await ctx.Services.posts.fetchUserCommunityPosts({
       sortBy,
@@ -62,7 +62,7 @@ export class PostResolver {
     // Destructure input
     const { communityId, page, limit, sortBy } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.posts.fetchCommunityPosts({
       sortBy,
       userId,
@@ -81,7 +81,7 @@ export class PostResolver {
     // Destructure input
     const { searchTerm, page, limit, sortBy } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     // Fetch all posts from database
     return await ctx.Services.posts.fetchSearchPosts({
       sortBy,
@@ -101,7 +101,7 @@ export class PostResolver {
   ): Promise<PostResponse> {
     // Destructure input
     const { userId, page, limit, sortBy = "New" } = options;
-    const authorId = userId ? userId : ctx.req.session.userId;
+    const authorId = userId ? userId : ctx.userId;
     return await ctx.Services.posts.fetchUserPosts({
       sortBy,
       userId,
@@ -120,7 +120,7 @@ export class PostResolver {
     // Destructure input
     const { page, limit, sortBy } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.posts.fetchUserHiddenPosts({
       sortBy,
       userId,
@@ -137,7 +137,7 @@ export class PostResolver {
     // Destructure options
     const { sortBy, limit, page, isUpvoted } = options;
     // Check if user is logged in
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.posts.fetchUserVotedPosts({
       sortBy,
       userId,
@@ -153,7 +153,7 @@ export class PostResolver {
     @Arg("id", () => Int) id: number
   ): Promise<PostResponse> {
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.posts.fetchPostById({
       postId: id,
       userId,
@@ -169,7 +169,7 @@ export class PostResolver {
     // Destructure input
     const { title, content, communityId, media } = options;
     // Get author id from session
-    const authorId = ctx.req.session.userId;
+    const authorId = ctx.userId;
     return await ctx.Services.posts.createPost({
       title,
       content,
@@ -185,7 +185,7 @@ export class PostResolver {
     @Ctx() ctx: MyContext,
     @Arg("id") id: number
   ): Promise<ConfirmResponse> {
-    const authorId = ctx.req.session.userId;
+    const authorId = ctx.userId;
     return await ctx.Services.posts.deletePost({
       postId: id,
       authorId,
@@ -201,7 +201,7 @@ export class PostResolver {
     // Destructure input
     const { id, title, content } = options;
     // Get current user id from session
-    const authorId = ctx.req.session.userId;
+    const authorId = ctx.userId;
     return await ctx.Services.posts.updatePost({
       title,
       content,

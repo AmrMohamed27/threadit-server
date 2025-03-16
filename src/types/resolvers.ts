@@ -8,6 +8,7 @@ import { redisRealPubSub } from "../redis/pubsub";
 export interface MyContext {
   req: Request;
   res: Response;
+  userId?: number;
   redis: typeof redisClient;
   Services: typeof Services;
   db: typeof db;

@@ -17,7 +17,7 @@ export class VoteResolver {
   ): Promise<VoteResponse> {
     // Destructure input
     const { isUpvote, postId, commentId } = options;
-    const authorId = ctx.req.session.userId;
+    const authorId = ctx.userId;
     return await ctx.Services.votes.createVote({
       postId,
       commentId,
@@ -34,7 +34,7 @@ export class VoteResolver {
     // Destructure options
     const { postId, commentId } = options;
     // Check if user is logged in
-    const authorId = ctx.req.session.userId;
+    const authorId = ctx.userId;
     return await ctx.Services.votes.deleteVote({ postId, commentId, authorId });
   }
   // Mutation to update a vote
@@ -46,7 +46,7 @@ export class VoteResolver {
     // Destructure input
     const { postId, commentId, isUpvote } = options;
     // Get author id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.votes.updateVote({
       userId,
       isUpvote,

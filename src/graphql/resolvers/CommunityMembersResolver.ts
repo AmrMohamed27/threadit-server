@@ -13,7 +13,7 @@ export class CommunityMembersResolver {
     // Destructure input
     const { communityId } = options;
     // Get author id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.communityMembers.joinCommunity(
       communityId,
       userId
@@ -29,7 +29,7 @@ export class CommunityMembersResolver {
     // Destructure input
     const { communityId } = options;
     // Get author id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.communityMembers.leaveCommunity(
       communityId,
       userId

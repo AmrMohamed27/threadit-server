@@ -16,7 +16,7 @@ export class CommunityResolver {
     @Arg("name") name: string
   ): Promise<CommunityResponse> {
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.communities.fetchCommunityByName({
       userId,
       name,
@@ -26,7 +26,7 @@ export class CommunityResolver {
   @Query(() => CommunityResponse)
   async getAllCommunities(@Ctx() ctx: MyContext): Promise<CommunityResponse> {
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.communities.fetchAllCommunities({
       userId,
       sortBy: "New",
@@ -40,7 +40,7 @@ export class CommunityResolver {
     @Arg("limit") limit: number
   ): Promise<CommunityResponse> {
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.communities.fetchExploreCommunities({
       userId,
       sortBy: "New",
@@ -57,7 +57,7 @@ export class CommunityResolver {
     // Destructure input
     const { searchTerm, page, limit } = options;
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.communities.searchCommunities({
       userId,
       page,
@@ -71,7 +71,7 @@ export class CommunityResolver {
   @Query(() => CommunityResponse)
   async getUserCommunities(@Ctx() ctx: MyContext): Promise<CommunityResponse> {
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.communities.fetchUserCommunities({
       userId,
       sortBy: "New",
@@ -87,7 +87,7 @@ export class CommunityResolver {
     // Destructure input
     const { name, description, image, isPrivate = false } = options;
     // Get author id from session
-    const creatorId = ctx.req.session.userId;
+    const creatorId = ctx.userId;
     return await ctx.Services.communities.createCommunity({
       name,
       description,
@@ -106,7 +106,7 @@ export class CommunityResolver {
     // Destructure input
     const { id, name, description, image } = options;
     // Get author id from session
-    const creatorId = ctx.req.session.userId;
+    const creatorId = ctx.userId;
     return await ctx.Services.communities.updateCommunity({
       communityId: id,
       creatorId,
@@ -122,7 +122,7 @@ export class CommunityResolver {
     @Ctx() ctx: MyContext,
     @Arg("id") id: number
   ): Promise<ConfirmResponse> {
-    const creatorId = ctx.req.session.userId;
+    const creatorId = ctx.userId;
     return await ctx.Services.communities.deleteCommunity({
       communityId: id,
       creatorId,

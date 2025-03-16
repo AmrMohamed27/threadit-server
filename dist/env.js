@@ -11,6 +11,7 @@ const envSchema = zod_1.z.object({
     REDIS_USERNAME: zod_1.z.string(),
     REDIS_PASSWORD: zod_1.z.string(),
     COOKIE_NAME: zod_1.z.string(),
+    JWT_SECRET: zod_1.z.string(),
     CORS_ORIGIN_FRONTEND: zod_1.z.string(),
     CORS_ORIGIN_BACKEND: zod_1.z.string(),
     CORS_ORIGIN_PROXY: zod_1.z.string(),

@@ -28,7 +28,7 @@ const resolvers_1 = require("../../types/resolvers");
 let CommunityResolver = class CommunityResolver {
     getCommunityByName(ctx, name) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.communities.fetchCommunityByName({
                 userId,
                 name,
@@ -37,7 +37,7 @@ let CommunityResolver = class CommunityResolver {
     }
     getAllCommunities(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.communities.fetchAllCommunities({
                 userId,
                 sortBy: "New",
@@ -46,7 +46,7 @@ let CommunityResolver = class CommunityResolver {
     }
     getExploreCommunities(ctx, limit) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.communities.fetchExploreCommunities({
                 userId,
                 sortBy: "New",
@@ -57,7 +57,7 @@ let CommunityResolver = class CommunityResolver {
     searchCommunities(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { searchTerm, page, limit } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.communities.searchCommunities({
                 userId,
                 page,
@@ -69,7 +69,7 @@ let CommunityResolver = class CommunityResolver {
     }
     getUserCommunities(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.communities.fetchUserCommunities({
                 userId,
                 sortBy: "New",
@@ -79,7 +79,7 @@ let CommunityResolver = class CommunityResolver {
     createCommunity(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { name, description, image, isPrivate = false } = options;
-            const creatorId = ctx.req.session.userId;
+            const creatorId = ctx.userId;
             return yield ctx.Services.communities.createCommunity({
                 name,
                 description,
@@ -92,7 +92,7 @@ let CommunityResolver = class CommunityResolver {
     updateCommunity(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { id, name, description, image } = options;
-            const creatorId = ctx.req.session.userId;
+            const creatorId = ctx.userId;
             return yield ctx.Services.communities.updateCommunity({
                 communityId: id,
                 creatorId,
@@ -104,7 +104,7 @@ let CommunityResolver = class CommunityResolver {
     }
     deleteCommunity(ctx, id) {
         return __awaiter(this, void 0, void 0, function* () {
-            const creatorId = ctx.req.session.userId;
+            const creatorId = ctx.userId;
             return yield ctx.Services.communities.deleteCommunity({
                 communityId: id,
                 creatorId,

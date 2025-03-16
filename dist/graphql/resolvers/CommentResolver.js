@@ -29,7 +29,7 @@ let CommentResolver = class CommentResolver {
     getUserComments(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { userId: passedUserId, sortBy, page, limit } = options;
-            const loggedInUserId = ctx.req.session.userId;
+            const loggedInUserId = ctx.userId;
             const userId = passedUserId ? passedUserId : loggedInUserId;
             return yield ctx.Services.comments.fetchUserComments({
                 userId,
@@ -42,7 +42,7 @@ let CommentResolver = class CommentResolver {
     getPostComments(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { postId, sortBy, searchTerm } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.comments.fetchPostComments({
                 userId,
                 sortBy,
@@ -54,7 +54,7 @@ let CommentResolver = class CommentResolver {
     getComment(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { commentId } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.comments.fetchCommentById({
                 userId,
                 commentId,
@@ -64,7 +64,7 @@ let CommentResolver = class CommentResolver {
     createComment(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { content, postId, parentCommentId } = options;
-            const authorId = ctx.req.session.userId;
+            const authorId = ctx.userId;
             return yield ctx.Services.comments.createComment({
                 content,
                 authorId,
@@ -75,7 +75,7 @@ let CommentResolver = class CommentResolver {
     }
     deleteComment(ctx, id) {
         return __awaiter(this, void 0, void 0, function* () {
-            const authorId = ctx.req.session.userId;
+            const authorId = ctx.userId;
             return yield ctx.Services.comments.deleteComment({
                 authorId,
                 commentId: id,
@@ -85,7 +85,7 @@ let CommentResolver = class CommentResolver {
     updateComment(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { id, content } = options;
-            const authorId = ctx.req.session.userId;
+            const authorId = ctx.userId;
             return yield ctx.Services.comments.updateComment({
                 authorId,
                 commentId: id,

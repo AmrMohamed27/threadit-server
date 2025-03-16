@@ -23,54 +23,45 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserResolver = void 0;
 const type_graphql_1 = require("type-graphql");
-const env_1 = require("../../env");
 const inputs_1 = require("../../types/inputs");
 const resolvers_1 = require("../../types/resolvers");
 let UserResolver = class UserResolver {
     registerUser(ctx, userData) {
         return __awaiter(this, void 0, void 0, function* () {
             const { email, password, name } = userData;
-            const result = yield ctx.Services.users.registerUser({
+            return yield ctx.Services.users.registerUser({
                 email,
                 password,
                 name,
             });
-            if (result.user) {
-                ctx.req.session.userId = result.user.id;
-            }
-            return result;
         });
     }
     requestConfirmationCode(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.users.requestConfirmationCode({ userId });
         });
     }
     confirmUser(ctx, code) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.users.confirmUser({ userId, code });
         });
     }
     loginUser(ctx, userData) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             const { email, password } = userData;
-            const result = yield ctx.Services.users.loginUser({
+            return yield ctx.Services.users.loginUser({
                 userId,
                 email,
                 password,
             });
-            if (result.user) {
-                ctx.req.session.userId = result.user.id;
-            }
-            return result;
         });
     }
     requestPasswordReset(ctx, email) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.users.requestPasswordReset({
                 userId,
                 email,
@@ -93,27 +84,20 @@ let UserResolver = class UserResolver {
             });
         });
     }
-    logoutUser(ctx) {
+    logoutUser() {
         return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve) => ctx.req.session.destroy((err) => {
-                ctx.res.clearCookie(env_1.env.COOKIE_NAME);
-                if (err) {
-                    console.error(err);
-                    resolve(false);
-                }
-                resolve(true);
-            }));
+            return true;
         });
     }
     toggleConfirmed(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.users.toggleConfirmed({ userId });
         });
     }
     me(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.users.me({ userId });
         });
     }
@@ -140,20 +124,15 @@ let UserResolver = class UserResolver {
     updateUserImage(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { image } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.users.updateUser({ image, userId });
         });
     }
     updateUserName(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { name } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.users.updateUser({ name, userId });
-        });
-    }
-    deleteUser(ctx, id) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield ctx.Services.users.deleteUser({ userId: id });
         });
     }
 };
@@ -215,9 +194,8 @@ __decorate([
 ], UserResolver.prototype, "resetPassword", null);
 __decorate([
     (0, type_graphql_1.Mutation)(() => Boolean),
-    __param(0, (0, type_graphql_1.Ctx)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], UserResolver.prototype, "logoutUser", null);
 __decorate([
@@ -274,14 +252,6 @@ __decorate([
     __metadata("design:paramtypes", [Object, inputs_1.UpdateUserNameInput]),
     __metadata("design:returntype", Promise)
 ], UserResolver.prototype, "updateUserName", null);
-__decorate([
-    (0, type_graphql_1.Mutation)(() => resolvers_1.ConfirmResponse),
-    __param(0, (0, type_graphql_1.Ctx)()),
-    __param(1, (0, type_graphql_1.Arg)("id", () => type_graphql_1.Int)),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number]),
-    __metadata("design:returntype", Promise)
-], UserResolver.prototype, "deleteUser", null);
 exports.UserResolver = UserResolver = __decorate([
     (0, type_graphql_1.Resolver)()
 ], UserResolver);

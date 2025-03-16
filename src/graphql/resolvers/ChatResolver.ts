@@ -28,7 +28,7 @@ export class ChatResolver {
   @Query(() => ChatResponse)
   async getUserChats(@Ctx() ctx: MyContext): Promise<ChatResponse> {
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.chats.fetchUserChats({ userId });
   }
 
@@ -57,7 +57,7 @@ export class ChatResolver {
     @Ctx() ctx: MyContext
   ): Promise<ConfirmResponse> {
     // Get user id from session
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     return await ctx.Services.chats.checkChatParticipant({
       userId,
       chatId,
@@ -82,7 +82,7 @@ export class ChatResolver {
     // Destructure input
     const { name, image, isGroupChat, participantIds } = options;
     // Get creator id from session
-    const creatorId = ctx.req.session.userId;
+    const creatorId = ctx.userId;
     let result: ChatResponse;
     if (isGroupChat === true) {
       result = await ctx.Services.chats.createGroupChat({
@@ -120,7 +120,7 @@ export class ChatResolver {
   ): Promise<ChatResponse> {
     // Destructure input
     const { chatId, image, name } = options;
-    const creatorId = ctx.req.session.userId;
+    const creatorId = ctx.userId;
     const result = await ctx.Services.chats.updateChat({
       chatId,
       name,
@@ -137,7 +137,7 @@ export class ChatResolver {
     @Arg("chatId") chatId: number,
     @Ctx() ctx: MyContext
   ): Promise<ChatConfirmResponse> {
-    const creatorId = ctx.req.session.userId;
+    const creatorId = ctx.userId;
     const result = await ctx.Services.chats.deleteChat({
       chatId,
       creatorId,
@@ -196,7 +196,7 @@ export class ChatResolver {
       redisRealPubSub.asyncIterator([SubscriptionTopics.NEW_CHAT]),
   })
   async newChat(@Root() response: ChatResponse, @Ctx() ctx: MyContext) {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     // Handle filtering here
     if (userId && response.chat) {
       // Only return the chat if it's relevant to this user
@@ -234,7 +234,7 @@ export class ChatResolver {
     @Root() response: ChatConfirmResponse,
     @Ctx() ctx: MyContext
   ) {
-    const userId = ctx.req.session.userId;
+    const userId = ctx.userId;
     const { operation, participantIds, errors } = response;
     if (userId && operation && participantIds && !errors) {
       return response;

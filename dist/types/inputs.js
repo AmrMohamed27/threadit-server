@@ -553,6 +553,10 @@ __decorate([
     __metadata("design:type", Array)
 ], UserResponse.prototype, "userArray", void 0);
 __decorate([
+    (0, type_graphql_1.Field)(() => String, { nullable: true }),
+    __metadata("design:type", String)
+], UserResponse.prototype, "token", void 0);
+__decorate([
     (0, type_graphql_1.Field)(() => [resolvers_1.FieldError], { nullable: true }),
     __metadata("design:type", Array)
 ], UserResponse.prototype, "errors", void 0);

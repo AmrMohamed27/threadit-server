@@ -21,7 +21,6 @@ const cors_1 = __importDefault(require("cors"));
 const express_1 = __importDefault(require("express"));
 const http_1 = __importDefault(require("http"));
 const schema_1 = require("./graphql/schema");
-const express_session_1 = __importDefault(require("express-session"));
 require("reflect-metadata");
 const redis_1 = require("./redis");
 const env_1 = require("./env");
@@ -30,65 +29,42 @@ const service_1 = require("./graphql/service");
 const ws_1 = require("ws");
 const ws_2 = require("graphql-ws/use/ws");
 const pubsub_1 = require("./redis/pubsub");
-const uuid_1 = require("uuid");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 function startServer() {
     return __awaiter(this, void 0, void 0, function* () {
         process.on("SIGINT", () => {
             console.log("Shutting down...");
-            if (pubsub_1.redisRealPubSub) {
-                try {
-                    const redisPublisher = pubsub_1.redisRealPubSub.publisher;
-                    const redisSubscriber = pubsub_1.redisRealPubSub.subscriber;
-                    if (redisPublisher)
-                        redisPublisher.quit();
-                    if (redisSubscriber)
-                        redisSubscriber.quit();
-                    console.log("Redis connections closed");
-                }
-                catch (err) {
-                    console.error("Error closing Redis connections:", err);
-                }
-            }
             process.exit(0);
-        });
-        process.on("unhandledRejection", (reason, promise) => {
-            console.error("Unhandled Rejection at:", promise, "reason:", reason);
         });
         const app = (0, express_1.default)();
         const httpServer = http_1.default.createServer(app);
+        const schema = yield (0, schema_1.createSchema)();
         const wsServer = new ws_1.WebSocketServer({
             server: httpServer,
             path: "/graphql",
         });
-        const schema = yield (0, schema_1.createSchema)();
         const serverCleanup = (0, ws_2.useServer)({
             schema,
-            context: (ctx, _msg, _args) => __awaiter(this, void 0, void 0, function* () {
+            context: (ctx) => __awaiter(this, void 0, void 0, function* () {
                 var _a;
                 let userId = null;
-                const authToken = (_a = ctx.connectionParams) === null || _a === void 0 ? void 0 : _a.authToken;
-                if (authToken) {
+                const authHeader = (_a = ctx.connectionParams) === null || _a === void 0 ? void 0 : _a.Authorization;
+                if (authHeader === null || authHeader === void 0 ? void 0 : authHeader.startsWith("Bearer ")) {
+                    const token = authHeader.split(" ")[1];
                     try {
-                        const userIdString = yield redis_1.redisClient.get(`ws:token:${authToken}`);
-                        if (userIdString) {
-                            userId = parseInt(userIdString, 10);
-                        }
+                        const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
+                        userId = decoded.userId;
                     }
                     catch (err) {
-                        console.error("Error validating WebSocket token:", err);
+                        console.error("Invalid WebSocket token:", err);
                     }
                 }
                 return {
+                    userId,
                     redis: redis_1.redisClient,
                     db: db_1.db,
                     Services: service_1.Services,
                     pubSub: pubsub_1.redisRealPubSub,
-                    req: {
-                        session: {
-                            userId,
-                        },
-                    },
-                    res: {},
                 };
             }),
         }, wsServer);
@@ -123,62 +99,31 @@ function startServer() {
                 "http://localhost:3000",
             ],
             credentials: true,
-        }), (0, body_parser_1.json)(), (0, express_session_1.default)({
-            name: env_1.env.COOKIE_NAME,
-            store: redis_1.redisStore,
-            resave: false,
-            saveUninitialized: false,
-            secret: env_1.env.REDIS_SECRET,
-            cookie: {
-                maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
-                httpOnly: true,
-                secure: env_1.__prod__,
-                sameSite: env_1.__prod__ ? "none" : false,
-                domain: "onrender.com",
-            },
-        }), (0, express4_1.expressMiddleware)(server, {
+        }), (0, body_parser_1.json)(), (0, express4_1.expressMiddleware)(server, {
             context: (_a) => __awaiter(this, [_a], void 0, function* ({ req, res }) {
-                return ({
+                const authHeader = req.headers.authorization;
+                let userId;
+                if (authHeader === null || authHeader === void 0 ? void 0 : authHeader.startsWith("Bearer ")) {
+                    const token = authHeader.split(" ")[1];
+                    try {
+                        const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
+                        userId = decoded.userId;
+                    }
+                    catch (error) {
+                        console.error("Invalid JWT:", error);
+                    }
+                }
+                return {
+                    userId,
                     req,
                     res,
                     redis: redis_1.redisClient,
                     Services: service_1.Services,
                     db: db_1.db,
                     pubSub: pubsub_1.redisRealPubSub,
-                });
+                };
             }),
         }));
-        app.get("/api/ws-auth", (0, cors_1.default)({
-            origin: [
-                env_1.env.CORS_ORIGIN_FRONTEND,
-                env_1.env.CORS_ORIGIN_BACKEND,
-                env_1.env.CORS_ORIGIN_PROXY,
-                "http://localhost:3000",
-            ],
-            credentials: true,
-        }), (0, body_parser_1.json)(), (0, express_session_1.default)({
-            name: env_1.env.COOKIE_NAME,
-            store: redis_1.redisStore,
-            resave: false,
-            saveUninitialized: false,
-            secret: env_1.env.REDIS_SECRET,
-            cookie: {
-                maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
-                httpOnly: true,
-                secure: env_1.__prod__,
-                sameSite: env_1.__prod__ ? "none" : false,
-                domain: "onrender.com",
-            },
-        }), (req, res) => {
-            if (!req.session.userId) {
-                return res.status(401).json({ error: "Not authenticated" });
-            }
-            const token = (0, uuid_1.v4)();
-            redis_1.redisClient.set(`ws:token:${token}`, String(req.session.userId), {
-                EX: 300,
-            });
-            return res.json({ token });
-        });
         httpServer.listen(4000, () => {
             console.log("🚀 GraphQL Server ready");
             console.log("📡 WebSocket Server ready");

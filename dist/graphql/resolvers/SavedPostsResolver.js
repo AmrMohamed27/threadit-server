@@ -28,26 +28,26 @@ const resolvers_1 = require("../../types/resolvers");
 let SavedPostsResolver = class SavedPostsResolver {
     savePost(postId, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.savedPosts.savePost({ postId, userId });
         });
     }
     unsavePost(postId, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.savedPosts.unsavePost({ postId, userId });
         });
     }
     getSavedPostsIds(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.savedPosts.getSavedPostIds({ userId });
         });
     }
     getSavedPosts(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { page, limit, sortBy } = options;
-            const userId = ctx.req.session.userId;
+            const userId = ctx.userId;
             return yield ctx.Services.posts.fetchUserSavedPosts({
                 userId,
                 page,
