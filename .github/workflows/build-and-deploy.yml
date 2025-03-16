@@ -18,7 +18,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add dist
+          git add -f dist
           git commit -m "Update build files" || echo "No changes to commit"
       - name: Push changes
         uses: ad-m/github-push-action@master
