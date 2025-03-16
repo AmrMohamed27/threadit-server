@@ -139,8 +139,9 @@ export async function startServer() {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // cookie valid for 10 years
         httpOnly: true,
-        secure: false,
-        sameSite: false,
+        secure: __prod__,
+        sameSite: __prod__ ? "none" : false,
+        domain: "onrender.com",
       },
     }),
     // Apollo Middleware
@@ -178,8 +179,9 @@ export async function startServer() {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // cookie valid for 10 years
         httpOnly: true,
-        secure: false,
-        sameSite: false,
+        secure: __prod__,
+        sameSite: __prod__ ? "none" : false,
+        domain: "onrender.com",
       },
     }),
     (req, res) => {

@@ -131,8 +131,9 @@ function startServer() {
             cookie: {
                 maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
                 httpOnly: true,
-                secure: false,
-                sameSite: false,
+                secure: env_1.__prod__,
+                sameSite: env_1.__prod__ ? "none" : false,
+                domain: "onrender.com",
             },
         }), (0, express4_1.expressMiddleware)(server, {
             context: (_a) => __awaiter(this, [_a], void 0, function* ({ req, res }) {
@@ -162,8 +163,9 @@ function startServer() {
             cookie: {
                 maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
                 httpOnly: true,
-                secure: false,
-                sameSite: false,
+                secure: env_1.__prod__,
+                sameSite: env_1.__prod__ ? "none" : false,
+                domain: "onrender.com",
             },
         }), (req, res) => {
             if (!req.session.userId) {
