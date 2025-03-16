@@ -134,7 +134,7 @@ function startServer() {
                 httpOnly: true,
                 secure: env_1.__prod__,
                 sameSite: env_1.__prod__ ? "none" : false,
-                domain: "onrender.com",
+                domain: ".vercel.app",
             },
         }), (0, express4_1.expressMiddleware)(server, {
             context: (_a) => __awaiter(this, [_a], void 0, function* ({ req, res }) {
@@ -167,7 +167,7 @@ function startServer() {
                 httpOnly: true,
                 secure: env_1.__prod__,
                 sameSite: env_1.__prod__ ? "none" : false,
-                domain: "onrender.com",
+                domain: ".vercel.app",
             },
         }), (req, res) => {
             if (!req.session.userId) {
