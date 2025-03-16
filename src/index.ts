@@ -139,8 +139,8 @@ export async function startServer() {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // cookie valid for 10 years
         httpOnly: true,
-        secure: __prod__,
-        sameSite: __prod__ ? "none" : false,
+        secure: false,
+        sameSite: false,
       },
     }),
     // Apollo Middleware
@@ -178,8 +178,8 @@ export async function startServer() {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // cookie valid for 10 years
         httpOnly: true,
-        secure: __prod__,
-        sameSite: __prod__ ? "none" : "lax",
+        secure: false,
+        sameSite: false,
       },
     }),
     (req, res) => {
