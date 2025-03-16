@@ -140,7 +140,7 @@ export async function startServer() {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // cookie valid for 10 years
         httpOnly: true,
         secure: __prod__,
-        sameSite: false,
+        sameSite: __prod__ ? "none" : false,
       },
     }),
     // Apollo Middleware

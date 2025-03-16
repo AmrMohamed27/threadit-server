@@ -132,7 +132,7 @@ function startServer() {
                 maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
                 httpOnly: true,
                 secure: env_1.__prod__,
-                sameSite: false,
+                sameSite: env_1.__prod__ ? "none" : false,
             },
         }), (0, express4_1.expressMiddleware)(server, {
             context: (_a) => __awaiter(this, [_a], void 0, function* ({ req, res }) {
