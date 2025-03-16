@@ -1,5 +1,4 @@
 import { Arg, Ctx, Int, Mutation, Query, Resolver } from "type-graphql";
-import { env } from "../../env";
 import {
   CheckTokenInput,
   GetSearchResultInput,
