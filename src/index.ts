@@ -156,7 +156,11 @@ export async function startServer() {
   app.get(
     "/api/ws-auth",
     cors({
-      origin: [env.CORS_ORIGIN_FRONTEND, env.CORS_ORIGIN_BACKEND],
+      origin: [
+        env.CORS_ORIGIN_FRONTEND,
+        env.CORS_ORIGIN_BACKEND,
+        "http://localhost:3000",
+      ],
       credentials: true,
     }), // Enable CORS
     json(), // Parse JSON bodies
