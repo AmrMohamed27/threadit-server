@@ -418,7 +418,7 @@ export class ChatService {
         creatorId,
       });
       // handle deletion error
-      if (!result || result.rowCount === 0) {
+      if (!result || result.length === 0) {
         return {
           operation,
           chatId,
@@ -466,7 +466,7 @@ export class ChatService {
         chatId,
       });
       // handle creation error
-      if (!result || result.rowCount === 0) {
+      if (!result || result.length === 0) {
         return {
           operation,
           chatId,
@@ -523,7 +523,7 @@ export class ChatService {
         chatId,
       });
       // handle creation error
-      if (!result || result.rowCount === 0) {
+      if (!result || result.length === 0) {
         return {
           operation,
           chatId,

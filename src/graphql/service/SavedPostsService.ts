@@ -23,7 +23,7 @@ export class SavedPostsService {
       };
     }
     const result = await this.repository.savePost({ postId, userId });
-    if (result.rowCount === 0) {
+    if (result.length === 0) {
       return {
         success: false,
         errors: [
@@ -58,7 +58,7 @@ export class SavedPostsService {
       };
     }
     const result = await this.repository.unsavePost({ postId, userId });
-    if (result.rowCount === 0) {
+    if (result.length === 0) {
       return {
         success: false,
         errors: [

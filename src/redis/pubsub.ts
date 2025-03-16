@@ -6,6 +6,8 @@ import { env } from "../env";
 const options: RedisOptions = {
   host: env.REDIS_HOST,
   port: env.REDIS_PORT,
+  username: env.REDIS_USERNAME,
+  password: env.REDIS_PASSWORD,
   retryStrategy: (times) => Math.min(times * 50, 2000), // Retry on failure
 };
 

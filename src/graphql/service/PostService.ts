@@ -488,7 +488,7 @@ export class PostService {
       authorId,
     });
     // handle deletion error
-    if (!result || result.rowCount === 0) {
+    if (!result || result.length === 0) {
       return {
         success: false,
         errors: [

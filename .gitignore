@@ -6,3 +6,5 @@ tmp/
 temp/
 .env
 dist/
+docker-compose.yml
+Dockerfile

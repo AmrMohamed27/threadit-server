@@ -248,7 +248,7 @@ export class CommunityService {
         creatorId
       );
       // handle creation error
-      if (createMemberResult.rowCount === 0) {
+      if (createMemberResult.length === 0) {
         return {
           errors: [
             {
@@ -324,7 +324,7 @@ export class CommunityService {
         creatorId,
       });
 
-      if (!updatedCommunity || updatedCommunity.rowCount === 0) {
+      if (!updatedCommunity || updatedCommunity.length === 0) {
         return {
           success: false,
           errors: [
@@ -375,7 +375,7 @@ export class CommunityService {
       communityId,
       creatorId,
     });
-    if (result.rowCount === 0) {
+    if (result.length === 0) {
       return {
         success: false,
         errors: [

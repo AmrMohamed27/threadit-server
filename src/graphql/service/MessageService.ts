@@ -142,7 +142,7 @@ export class MessageService {
         senderId,
       });
       // handle update error
-      if (!result || result.rowCount === 0) {
+      if (!result || result.length === 0) {
         return {
           errors: [
             {
@@ -195,7 +195,7 @@ export class MessageService {
         senderId,
       });
       // handle deletion error
-      if (!result || result.rowCount === 0) {
+      if (!result || result.length === 0) {
         return {
           success: false,
           errors: [

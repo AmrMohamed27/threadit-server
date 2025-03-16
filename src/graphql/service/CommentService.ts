@@ -250,7 +250,7 @@ export class CommentService {
       authorId,
     });
     // handle update error
-    if (!result || result.rowCount === 0) {
+    if (!result || result.length === 0) {
       return {
         success: false,
         errors: [
@@ -289,7 +289,7 @@ export class CommentService {
       authorId,
     });
     // handle deletion error
-    if (!result || result.rowCount === 0) {
+    if (!result || result.length === 0) {
       return {
         success: false,
         errors: [

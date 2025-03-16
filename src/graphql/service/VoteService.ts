@@ -233,7 +233,7 @@ export class VoteService {
         commentId,
         authorId,
       });
-      if (result.rowCount === 0) {
+      if (result.length === 0) {
         return {
           success: false,
           errors: [
@@ -315,7 +315,7 @@ export class VoteService {
         isUpvote,
         userId,
       });
-      if (!updatedVote || updatedVote.rowCount === 0) {
+      if (!updatedVote || updatedVote.length === 0) {
         return {
           success: false,
           errors: [
