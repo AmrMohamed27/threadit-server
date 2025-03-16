@@ -121,7 +121,11 @@ export async function startServer() {
   app.use(
     "/graphql",
     cors({
-      origin: [env.CORS_ORIGIN_FRONTEND, env.CORS_ORIGIN_BACKEND],
+      origin: [
+        env.CORS_ORIGIN_FRONTEND,
+        env.CORS_ORIGIN_BACKEND,
+        "http://localhost:3000",
+      ],
       credentials: true,
     }), // Enable CORS
     json(), // Parse JSON bodies
