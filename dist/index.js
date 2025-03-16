@@ -119,6 +119,7 @@ function startServer() {
             origin: [
                 env_1.env.CORS_ORIGIN_FRONTEND,
                 env_1.env.CORS_ORIGIN_BACKEND,
+                env_1.env.CORS_ORIGIN_PROXY,
                 "http://localhost:3000",
             ],
             credentials: true,
@@ -151,6 +152,7 @@ function startServer() {
             origin: [
                 env_1.env.CORS_ORIGIN_FRONTEND,
                 env_1.env.CORS_ORIGIN_BACKEND,
+                env_1.env.CORS_ORIGIN_PROXY,
                 "http://localhost:3000",
             ],
             credentials: true,
