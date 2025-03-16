@@ -194,8 +194,8 @@ export async function startServer() {
 
   // Start Express Server
   httpServer.listen(4000, () => {
-    console.log("🚀 GraphQL Server ready at http://localhost:4000/graphql");
-    console.log("📡 WebSocket Server ready on ws://localhost:4000/graphql");
+    console.log("🚀 GraphQL Server ready");
+    console.log("📡 WebSocket Server ready");
   });
 }
 
