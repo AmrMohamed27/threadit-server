@@ -142,7 +142,7 @@ export async function startServer() {
         httpOnly: true,
         secure: __prod__,
         sameSite: __prod__ ? "none" : false,
-        domain: "onrender.com",
+        domain: ".vercel.app",
       },
     }),
     // Apollo Middleware
@@ -183,7 +183,7 @@ export async function startServer() {
         httpOnly: true,
         secure: __prod__,
         sameSite: __prod__ ? "none" : false,
-        domain: "onrender.com",
+        domain: ".vercel.app",
       },
     }),
     (req, res) => {
