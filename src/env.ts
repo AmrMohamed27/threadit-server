@@ -12,6 +12,7 @@ const envSchema = z.object({
   COOKIE_NAME: z.string(),
   CORS_ORIGIN_FRONTEND: z.string(),
   CORS_ORIGIN_BACKEND: z.string(),
+  CORS_ORIGIN_PROXY: z.string(),
   NODE_ENV: z.enum(["development", "production"]),
   GOOGLE_APP_PASSWORD: z.string().length(16, {
     message: "Google app password should be exactly 16 letters",

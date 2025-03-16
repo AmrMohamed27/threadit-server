@@ -124,6 +124,7 @@ export async function startServer() {
       origin: [
         env.CORS_ORIGIN_FRONTEND,
         env.CORS_ORIGIN_BACKEND,
+        env.CORS_ORIGIN_PROXY,
         "http://localhost:3000",
       ],
       credentials: true,
@@ -164,6 +165,7 @@ export async function startServer() {
       origin: [
         env.CORS_ORIGIN_FRONTEND,
         env.CORS_ORIGIN_BACKEND,
+        env.CORS_ORIGIN_PROXY,
         "http://localhost:3000",
       ],
       credentials: true,
