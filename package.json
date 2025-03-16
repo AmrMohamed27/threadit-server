@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "build": "npm ci",
     "watch": "tsc -w",
     "dev": "nodemon dist/index.js",
     "startServer": "node dist/index.js",
@@ -28,10 +29,10 @@
     "concurrently": "^9.1.2",
     "drizzle-kit": "^0.30.4",
     "nodemon": "^3.1.9",
-    "ts-node": "10.9.1"
+    "ts-node": "10.9.1",
+    "typescript": "^5.7.3"
   },
   "dependencies": {
-    "typescript": "^5.7.3",
     "@apollo/server": "^4.11.3",
     "@graphql-tools/schema": "^10.0.21",
     "@supabase/supabase-js": "^2.49.1",
