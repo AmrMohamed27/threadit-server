@@ -124,6 +124,9 @@ function startServer() {
                 };
             }),
         }));
+        app.get("/ping", (_, res) => {
+            res.status(200).send("OK");
+        });
         httpServer.listen(4000, () => {
             console.log("🚀 GraphQL Server ready");
             console.log("📡 WebSocket Server ready");
