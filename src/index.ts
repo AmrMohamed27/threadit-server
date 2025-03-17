@@ -134,6 +134,10 @@ export async function startServer() {
     })
   );
 
+  app.get("/ping", (_, res) => {
+    res.status(200).send("OK");
+  });
+
   // Start Express Server
   httpServer.listen(4000, () => {
     console.log("🚀 GraphQL Server ready");
