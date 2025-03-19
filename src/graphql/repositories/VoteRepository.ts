@@ -69,7 +69,8 @@ export class VoteRepository {
           eq(votes.userId, userId),
           or(eq(votes.postId, postId ?? 0), eq(votes.commentId, commentId ?? 0))
         )
-      );
+      )
+      .returning();
   }
   static async createVote({
     isUpvote,

@@ -57,7 +57,8 @@ export class MessageRepository {
       .set({
         content,
       })
-      .where(and(eq(messages.id, messageId), eq(messages.senderId, senderId)));
+      .where(and(eq(messages.id, messageId), eq(messages.senderId, senderId)))
+      .returning();
   }
   static async deleteMessage({
     messageId,

@@ -390,7 +390,6 @@ export const mapCommunitiesResult = (
 
 // Function to handle register errors
 export function registerErrorHandler(error: any): UserResponse {
-  console.log("ERROR: ", error);
   // Duplicate email error
   if (error.constraint_name === "users_email_unique") {
     return {

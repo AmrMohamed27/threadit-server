@@ -25,7 +25,7 @@ export class HiddenPostsService {
     }
     const result = await this.repository.hidePost({ postId, userId });
 
-    if (result.length === 0) {
+    if (!result || result.length === 0) {
       return {
         success: false,
         errors: [
@@ -62,7 +62,7 @@ export class HiddenPostsService {
     }
 
     const result = await this.repository.unhidePost({ postId, userId });
-    if (result.length === 0) {
+    if (!result) {
       return {
         success: false,
         errors: [

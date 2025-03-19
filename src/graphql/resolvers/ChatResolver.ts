@@ -142,9 +142,8 @@ export class ChatResolver {
       chatId,
       creatorId,
     });
-    if (!result.errors) {
-      await ctx.pubSub.publish(SubscriptionTopics.CHAT_DELETED, result);
-    }
+    console.log(result);
+    await ctx.pubSub.publish(SubscriptionTopics.CHAT_DELETED, result);
     return result;
   }
 
@@ -235,6 +234,7 @@ export class ChatResolver {
     @Ctx() ctx: MyContext
   ) {
     const userId = ctx.userId;
+    console.log(userId);
     const { operation, participantIds, errors } = response;
     if (userId && operation && participantIds && !errors) {
       return response;

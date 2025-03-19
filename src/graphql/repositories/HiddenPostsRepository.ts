@@ -10,7 +10,7 @@ export class HiddenPostsRepository {
     postId: number;
     userId: number;
   }) {
-    return await db.insert(hiddenPosts).values({ postId, userId });
+    return await db.insert(hiddenPosts).values({ postId, userId }).returning();
   }
 
   static async unhidePost({

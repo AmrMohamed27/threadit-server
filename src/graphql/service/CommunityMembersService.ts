@@ -23,7 +23,7 @@ export class CommunityMembersService {
     try {
       const result = await this.repository.joinCommunity(communityId, userId);
       // handle creation error
-      if (result.length === 0) {
+      if (!result || result.length === 0) {
         return {
           success: false,
           errors: [
@@ -86,7 +86,7 @@ export class CommunityMembersService {
     // Remove the user from the community
     try {
       const result = await this.repository.leaveCommunity(communityId, userId);
-      if (result.length === 0) {
+      if (!result) {
         return {
           success: false,
           errors: [

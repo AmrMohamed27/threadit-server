@@ -413,24 +413,10 @@ export class ChatService {
         chatId,
       });
       const participantIds = participants.map((p) => p.userId);
-      const result = await this.repository.deleteChat({
+      await this.repository.deleteChat({
         chatId,
         creatorId,
       });
-      // handle deletion error
-      if (!result || result.length === 0) {
-        return {
-          operation,
-          chatId,
-          errors: [
-            {
-              field: "root",
-              message:
-                "Error deleting chat, make sure you are deleting a chat you created and the chat exists.",
-            },
-          ],
-        };
-      }
       return {
         operation,
         chatId,
@@ -523,7 +509,7 @@ export class ChatService {
         chatId,
       });
       // handle creation error
-      if (!result || result.length === 0) {
+      if (!result) {
         return {
           operation,
           chatId,

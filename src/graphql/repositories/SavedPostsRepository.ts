@@ -10,7 +10,7 @@ export class SavedPostsRepository {
     postId: number;
     userId: number;
   }) {
-    return await db.insert(savedPosts).values({ postId, userId });
+    return await db.insert(savedPosts).values({ postId, userId }).returning();
   }
 
   static async unsavePost({

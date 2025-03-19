@@ -64,6 +64,8 @@ export class UserService {
       const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
         expiresIn: "30d",
       });
+      // Send a confirmation email
+      await this.requestConfirmationCode({ userId: user.id });
       // Return the new user
       return { user, token };
       //   Catch errors
@@ -159,7 +161,7 @@ export class UserService {
       }
       // Get user with id from session
       const result = await this.repository.getUserEmailAndConfirmed({ userId });
-      if (result.length === 0) {
+      if (!result || result.length === 0) {
         return {
           success: false,
           errors: [

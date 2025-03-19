@@ -5,10 +5,13 @@ import { communityMembers } from "../../database/schema";
 export class CommunityMembersRepository {
   // Join Community
   static async joinCommunity(communityId: number, userId: number) {
-    return await db.insert(communityMembers).values({
-      communityId,
-      userId,
-    });
+    return await db
+      .insert(communityMembers)
+      .values({
+        communityId,
+        userId,
+      })
+      .returning();
   }
 
   // Leave Community

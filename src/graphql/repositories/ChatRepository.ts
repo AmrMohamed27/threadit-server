@@ -57,7 +57,10 @@ export class ChatRepository {
     userId: number;
     chatId: number;
   }) {
-    return await db.insert(chatParticipants).values({ userId, chatId });
+    return await db
+      .insert(chatParticipants)
+      .values({ userId, chatId })
+      .returning();
   }
 
   static async removeChatParticipant({

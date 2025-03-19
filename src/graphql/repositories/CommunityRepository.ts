@@ -142,7 +142,8 @@ export class CommunityRepository {
           description === undefined ? communities.description : description,
         image: image === undefined ? communities.image : image,
       })
-      .where(and(eq(communities.id, id), eq(communities.creatorId, creatorId)));
+      .where(and(eq(communities.id, id), eq(communities.creatorId, creatorId)))
+      .returning();
   }
 
   static async deleteCommunity({

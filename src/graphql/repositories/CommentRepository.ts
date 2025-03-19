@@ -124,7 +124,8 @@ export class CommentRepository {
       .set({
         content,
       })
-      .where(and(eq(comments.id, commentId), eq(comments.authorId, authorId)));
+      .where(and(eq(comments.id, commentId), eq(comments.authorId, authorId)))
+      .returning();
   }
   static async deleteComment({
     commentId,
