@@ -20,72 +20,24 @@ jobs:
       - name: Build project
         run: npm run build
 
-      # Debug step to check file structure after build
-      - name: Debug file structure
+      - name: Prepare deployment files
         run: |
-          echo "Contents of current directory:"
-          ls -la
-          echo "Checking if dist directory exists:"
-          if [ -d "dist" ]; then
-            echo "dist directory exists"
-            echo "Contents of dist directory:"
-            ls -la dist
-          else
-            echo "dist directory does not exist"
-          fi
+          # Create a deployment directory
+          mkdir -p deployment
 
-      # Create a deployment branch with only what's needed to run in production
-      - name: Prepare deployment branch
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-          # Create and check out an orphan branch (no history)
-          git checkout --orphan deployment
-
-          # Remove everything
-          git rm -rf .
-
-          # Create directories
-          mkdir -p dist
-
-          # Only copy dist if it exists in the main branch
-          if [ -d "../dist" ] && [ "$(ls -A ../dist)" ]; then
-            echo "Copying files from dist directory"
-            cp -r ../dist/* dist/
-          else
-            echo "WARNING: dist directory is empty or doesn't exist"
-            # Create a placeholder file to avoid empty directory issues
-            echo "// This directory should contain built JavaScript files" > dist/README.md
-          fi
-
-          # Copy drizzle migrations folder
-          mkdir -p drizzle
-          if [ -d "../drizzle" ] && [ "$(ls -A ../drizzle)" ]; then
-            cp -r ../drizzle/* drizzle/
-          else
-            echo "WARNING: drizzle directory is empty or doesn't exist"
-          fi
-
-          # Copy drizzle config if it exists
-          if [ -f "../drizzle.config.ts" ]; then
-            cp ../drizzle.config.ts .
-          fi
-
-          # Copy package files
-          cp ../package.json .
-          cp ../package-lock.json .
+          # Copy only the files needed for production
+          cp -r dist deployment/
+          cp -r drizzle deployment/
+          cp drizzle.config.ts deployment/
+          cp package.json deployment/
+          cp package-lock.json deployment/
 
           # Create a .npmrc file to prevent installing dev dependencies
-          echo 'omit=dev' > .npmrc
+          echo 'omit=dev' > deployment/.npmrc
 
-          # Add and commit files
-          git add .
-          git commit -m "Deploy production build"
-
-      - name: Push deployment branch
-        uses: ad-m/github-push-action@master
+      - name: Deploy to production branch
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          folder: deployment
           branch: deployment
-          force: true
+          clean: true
