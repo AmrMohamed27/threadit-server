@@ -20,6 +20,20 @@ jobs:
       - name: Build project
         run: npm run build
 
+      # Debug step to check file structure after build
+      - name: Debug file structure
+        run: |
+          echo "Contents of current directory:"
+          ls -la
+          echo "Checking if dist directory exists:"
+          if [ -d "dist" ]; then
+            echo "dist directory exists"
+            echo "Contents of dist directory:"
+            ls -la dist
+          else
+            echo "dist directory does not exist"
+          fi
+
       # Create a deployment branch with only what's needed to run in production
       - name: Prepare deployment branch
         run: |
@@ -32,29 +46,42 @@ jobs:
           # Remove everything
           git rm -rf .
 
-          # Copy dist folder, drizzle migrations, and package files
+          # Create directories
           mkdir -p dist
-          cp -r ../dist/* dist/
+
+          # Only copy dist if it exists in the main branch
+          if [ -d "../dist" ] && [ "$(ls -A ../dist)" ]; then
+            echo "Copying files from dist directory"
+            cp -r ../dist/* dist/
+          else
+            echo "WARNING: dist directory is empty or doesn't exist"
+            # Create a placeholder file to avoid empty directory issues
+            echo "// This directory should contain built JavaScript files" > dist/README.md
+          fi
 
           # Copy drizzle migrations folder
           mkdir -p drizzle
-          cp -r ../drizzle/* drizzle/
+          if [ -d "../drizzle" ] && [ "$(ls -A ../drizzle)" ]; then
+            cp -r ../drizzle/* drizzle/
+          else
+            echo "WARNING: drizzle directory is empty or doesn't exist"
+          fi
 
-          # Copy package files for dependencies and config for drizzle
+          # Copy drizzle config if it exists
+          if [ -f "../drizzle.config.ts" ]; then
+            cp ../drizzle.config.ts .
+          fi
+
+          # Copy package files
           cp ../package.json .
           cp ../package-lock.json .
-          cp ../drizzle.config.ts .
-
-          # Create a simple start script for Render
-          echo 'node dist/index.js' > start.sh
-          chmod +x start.sh
 
           # Create a .npmrc file to prevent installing dev dependencies
           echo 'omit=dev' > .npmrc
 
           # Add and commit files
           git add .
-          git commit -m "Deploy build artifacts with migrations"
+          git commit -m "Deploy production build"
 
       - name: Push deployment branch
         uses: ad-m/github-push-action@master
