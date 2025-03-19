@@ -1,0 +1,1 @@
+ALTER TABLE "communities" ADD COLUMN "is_private" boolean DEFAULT false;
