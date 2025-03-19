@@ -88,7 +88,8 @@ class CommentRepository {
                 .set({
                 content,
             })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.comments.id, commentId), (0, drizzle_orm_1.eq)(schema_1.comments.authorId, authorId)));
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.comments.id, commentId), (0, drizzle_orm_1.eq)(schema_1.comments.authorId, authorId)))
+                .returning();
         });
     }
     static deleteComment(_a) {

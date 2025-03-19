@@ -86,7 +86,8 @@ class CommunityRepository {
                 description: description === undefined ? schema_1.communities.description : description,
                 image: image === undefined ? schema_1.communities.image : image,
             })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.communities.id, id), (0, drizzle_orm_1.eq)(schema_1.communities.creatorId, creatorId)));
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.communities.id, id), (0, drizzle_orm_1.eq)(schema_1.communities.creatorId, creatorId)))
+                .returning();
         });
     }
     static deleteCommunity(_a) {

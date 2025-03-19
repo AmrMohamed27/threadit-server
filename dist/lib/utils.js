@@ -246,7 +246,6 @@ const mapCommunitiesResult = (communities) => {
 };
 exports.mapCommunitiesResult = mapCommunitiesResult;
 function registerErrorHandler(error) {
-    console.log("ERROR: ", error);
     if (error.constraint_name === "users_email_unique") {
         return {
             errors: [

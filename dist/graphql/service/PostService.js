@@ -325,7 +325,7 @@ class PostService {
                 postId,
                 authorId,
             });
-            if (!result || result.length === 0) {
+            if (!result) {
                 return {
                     success: false,
                     errors: [

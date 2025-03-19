@@ -49,7 +49,8 @@ class VoteRepository {
                 .set({
                 isUpvote,
             })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.votes.userId, userId), (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema_1.votes.postId, postId !== null && postId !== void 0 ? postId : 0), (0, drizzle_orm_1.eq)(schema_1.votes.commentId, commentId !== null && commentId !== void 0 ? commentId : 0))));
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.votes.userId, userId), (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema_1.votes.postId, postId !== null && postId !== void 0 ? postId : 0), (0, drizzle_orm_1.eq)(schema_1.votes.commentId, commentId !== null && commentId !== void 0 ? commentId : 0))))
+                .returning();
         });
     }
     static createVote(_a) {

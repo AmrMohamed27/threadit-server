@@ -16,10 +16,13 @@ const schema_1 = require("../../database/schema");
 class CommunityMembersRepository {
     static joinCommunity(communityId, userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield db_1.db.insert(schema_1.communityMembers).values({
+            return yield db_1.db
+                .insert(schema_1.communityMembers)
+                .values({
                 communityId,
                 userId,
-            });
+            })
+                .returning();
         });
     }
     static leaveCommunity(communityId, userId) {

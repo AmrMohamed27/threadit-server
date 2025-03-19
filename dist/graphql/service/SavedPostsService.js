@@ -28,7 +28,7 @@ class SavedPostsService {
                 };
             }
             const result = yield this.repository.savePost({ postId, userId });
-            if (result.length === 0) {
+            if (!result || result.length === 0) {
                 return {
                     success: false,
                     errors: [
@@ -58,7 +58,7 @@ class SavedPostsService {
                 };
             }
             const result = yield this.repository.unsavePost({ postId, userId });
-            if (result.length === 0) {
+            if (!result) {
                 return {
                     success: false,
                     errors: [

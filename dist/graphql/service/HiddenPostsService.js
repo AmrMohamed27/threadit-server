@@ -28,7 +28,7 @@ class HiddenPostsService {
                 };
             }
             const result = yield this.repository.hidePost({ postId, userId });
-            if (result.length === 0) {
+            if (!result || result.length === 0) {
                 return {
                     success: false,
                     errors: [
@@ -58,7 +58,7 @@ class HiddenPostsService {
                 };
             }
             const result = yield this.repository.unhidePost({ postId, userId });
-            if (result.length === 0) {
+            if (!result) {
                 return {
                     success: false,
                     errors: [

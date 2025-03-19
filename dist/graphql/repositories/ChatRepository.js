@@ -54,7 +54,10 @@ class ChatRepository {
     }
     static addChatParticipant(_a) {
         return __awaiter(this, arguments, void 0, function* ({ userId, chatId, }) {
-            return yield db_1.db.insert(schema_1.chatParticipants).values({ userId, chatId });
+            return yield db_1.db
+                .insert(schema_1.chatParticipants)
+                .values({ userId, chatId })
+                .returning();
         });
     }
     static removeChatParticipant(_a) {

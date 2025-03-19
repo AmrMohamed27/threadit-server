@@ -62,6 +62,7 @@ class UserService {
                 const token = jsonwebtoken_1.default.sign({ userId: user.id }, env_1.env.JWT_SECRET, {
                     expiresIn: "30d",
                 });
+                yield this.requestConfirmationCode({ userId: user.id });
                 return { user, token };
             }
             catch (error) {
@@ -148,7 +149,7 @@ class UserService {
                     };
                 }
                 const result = yield this.repository.getUserEmailAndConfirmed({ userId });
-                if (result.length === 0) {
+                if (!result || result.length === 0) {
                     return {
                         success: false,
                         errors: [

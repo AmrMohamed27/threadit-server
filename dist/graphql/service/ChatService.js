@@ -355,22 +355,10 @@ class ChatService {
                     chatId,
                 });
                 const participantIds = participants.map((p) => p.userId);
-                const result = yield this.repository.deleteChat({
+                yield this.repository.deleteChat({
                     chatId,
                     creatorId,
                 });
-                if (!result || result.length === 0) {
-                    return {
-                        operation,
-                        chatId,
-                        errors: [
-                            {
-                                field: "root",
-                                message: "Error deleting chat, make sure you are deleting a chat you created and the chat exists.",
-                            },
-                        ],
-                    };
-                }
                 return {
                     operation,
                     chatId,
@@ -451,7 +439,7 @@ class ChatService {
                     userId: participantId,
                     chatId,
                 });
-                if (!result || result.length === 0) {
+                if (!result) {
                     return {
                         operation,
                         chatId,

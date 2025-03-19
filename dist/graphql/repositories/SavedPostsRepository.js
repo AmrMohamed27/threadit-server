@@ -16,7 +16,7 @@ const schema_1 = require("../../database/schema");
 class SavedPostsRepository {
     static savePost(_a) {
         return __awaiter(this, arguments, void 0, function* ({ postId, userId, }) {
-            return yield db_1.db.insert(schema_1.savedPosts).values({ postId, userId });
+            return yield db_1.db.insert(schema_1.savedPosts).values({ postId, userId }).returning();
         });
     }
     static unsavePost(_a) {

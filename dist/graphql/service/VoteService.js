@@ -200,7 +200,7 @@ class VoteService {
                     commentId,
                     authorId,
                 });
-                if (result.length === 0) {
+                if (!result) {
                     return {
                         success: false,
                         errors: [

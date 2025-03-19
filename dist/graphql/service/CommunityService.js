@@ -280,7 +280,7 @@ class CommunityService {
                 communityId,
                 creatorId,
             });
-            if (result.length === 0) {
+            if (!result) {
                 return {
                     success: false,
                     errors: [

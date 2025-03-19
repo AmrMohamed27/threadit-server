@@ -53,7 +53,8 @@ class MessageRepository {
                 .set({
                 content,
             })
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.messages.id, messageId), (0, drizzle_orm_1.eq)(schema_1.messages.senderId, senderId)));
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.messages.id, messageId), (0, drizzle_orm_1.eq)(schema_1.messages.senderId, senderId)))
+                .returning();
         });
     }
     static deleteMessage(_a) {

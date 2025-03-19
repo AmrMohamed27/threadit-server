@@ -111,9 +111,8 @@ let ChatResolver = class ChatResolver {
                 chatId,
                 creatorId,
             });
-            if (!result.errors) {
-                yield ctx.pubSub.publish(pubsub_1.SubscriptionTopics.CHAT_DELETED, result);
-            }
+            console.log(result);
+            yield ctx.pubSub.publish(pubsub_1.SubscriptionTopics.CHAT_DELETED, result);
             return result;
         });
     }
@@ -165,6 +164,7 @@ let ChatResolver = class ChatResolver {
     chatUpdates(response, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const userId = ctx.userId;
+            console.log(userId);
             const { operation, participantIds, errors } = response;
             if (userId && operation && participantIds && !errors) {
                 return response;

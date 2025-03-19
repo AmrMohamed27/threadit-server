@@ -172,7 +172,7 @@ class MessageService {
                     messageId,
                     senderId,
                 });
-                if (!result || result.length === 0) {
+                if (!result) {
                     return {
                         success: false,
                         errors: [

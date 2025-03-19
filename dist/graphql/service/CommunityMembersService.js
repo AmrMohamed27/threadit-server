@@ -33,7 +33,7 @@ class CommunityMembersService {
             }
             try {
                 const result = yield this.repository.joinCommunity(communityId, userId);
-                if (result.length === 0) {
+                if (!result || result.length === 0) {
                     return {
                         success: false,
                         errors: [
@@ -93,7 +93,7 @@ class CommunityMembersService {
             }
             try {
                 const result = yield this.repository.leaveCommunity(communityId, userId);
-                if (result.length === 0) {
+                if (!result) {
                     return {
                         success: false,
                         errors: [

@@ -16,7 +16,7 @@ const schema_1 = require("../../database/schema");
 class HiddenPostsRepository {
     static hidePost(_a) {
         return __awaiter(this, arguments, void 0, function* ({ postId, userId, }) {
-            return yield db_1.db.insert(schema_1.hiddenPosts).values({ postId, userId });
+            return yield db_1.db.insert(schema_1.hiddenPosts).values({ postId, userId }).returning();
         });
     }
     static unhidePost(_a) {
