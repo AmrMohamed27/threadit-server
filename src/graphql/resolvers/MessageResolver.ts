@@ -76,6 +76,8 @@ export class MessageResolver {
   })
   async newMessage(@Root() response: MessageResponse, @Ctx() ctx: MyContext) {
     const userId = ctx.userId;
+    console.log(userId);
+
     // Handle filtering here
     if (userId && response.message) {
       // Only return the message if it's relevant to this user
@@ -92,11 +94,11 @@ export class MessageResolver {
       if (result.success) {
         return response;
       }
-      // Return null or undefined to filter out this message
+      // Return null to filter out this message
       return null;
     }
 
-    // If no userId or no message response, return the message for debugging
-    return response;
+    // If no userId or no message response, return null
+    return null;
   }
 }

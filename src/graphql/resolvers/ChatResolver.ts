@@ -81,6 +81,7 @@ export class ChatResolver {
   ): Promise<ChatResponse> {
     // Destructure input
     const { name, image, isGroupChat, participantIds } = options;
+    console.log("Participant Ids: ", participantIds);
     // Get creator id from session
     const creatorId = ctx.userId;
     let result: ChatResponse;
@@ -192,14 +193,17 @@ export class ChatResolver {
   @Subscription(() => ChatResponse, {
     subscribe: () =>
       redisRealPubSub.asyncIterator([SubscriptionTopics.NEW_CHAT]),
+    nullable: true,
   })
   async newChat(@Root() response: ChatResponse, @Ctx() ctx: MyContext) {
     const userId = ctx.userId;
+    console.log("Response; ", response.chat);
     // Handle filtering here
     if (userId && response.chat) {
       // Only return the chat if it's relevant to this user
       // Case 1: the user is the creator of the chat so we don't need to check the chat
       if (response.chat.creatorId === userId) {
+        console.log("Creator: ", userId);
         return response;
       }
       // Case 2: The user is not the creator so we need to check if the user is a participant in the chat
@@ -208,13 +212,16 @@ export class ChatResolver {
         chatId: response.chat.id,
       });
       if (result.success) {
+        console.log("Participant: ", userId);
         return response;
+      } else {
+        // Return null or undefined to filter out this chat
+        console.log("No Participant: ", userId);
+        return null;
       }
-      // Return null or undefined to filter out this chat
-      return null;
     }
-
-    // If no userId filter or chat passes the filter, return it
+    // If no userId filter or chat passes the filter, return null
+    console.log("No UserId: ", userId);
     return response;
   }
 

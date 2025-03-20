@@ -37,6 +37,21 @@ export async function startServer() {
     path: "/graphql",
   });
 
+  // Helper function to verify JWT token
+  const verifyToken = (token: string) => {
+    try {
+      if (!token) return;
+
+      const decoded = jwt.verify(token, env.JWT_SECRET) as {
+        userId: number;
+      };
+      return decoded.userId;
+    } catch (err) {
+      console.error("Invalid token:", err);
+      return;
+    }
+  };
+
   // WebSocket authentication
   const serverCleanup = useServer(
     {
@@ -47,14 +62,7 @@ export async function startServer() {
 
         if (authHeader?.startsWith("Bearer ")) {
           const token = authHeader.split(" ")[1];
-          try {
-            const decoded = jwt.verify(token, env.JWT_SECRET) as {
-              userId: number;
-            };
-            userId = decoded.userId;
-          } catch (err) {
-            console.error("Invalid WebSocket token:", err);
-          }
+          userId = verifyToken(token);
         }
 
         return {
@@ -111,14 +119,7 @@ export async function startServer() {
 
         if (authHeader?.startsWith("Bearer ")) {
           const token = authHeader.split(" ")[1];
-          try {
-            const decoded = jwt.verify(token, env.JWT_SECRET) as {
-              userId: number;
-            };
-            userId = decoded.userId;
-          } catch (error) {
-            console.error("Invalid JWT:", error);
-          }
+          userId = verifyToken(token);
         }
 
         return {
@@ -132,6 +133,46 @@ export async function startServer() {
         };
       },
     })
+  );
+
+  // WebSocket Authentication endpoint
+  app.get(
+    "/api/ws-auth",
+    cors({
+      origin: [
+        env.CORS_ORIGIN_FRONTEND,
+        env.CORS_ORIGIN_BACKEND,
+        env.CORS_ORIGIN_PROXY,
+        "http://localhost:3000",
+      ],
+      credentials: true,
+    }),
+    (req, res) => {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader) {
+        return res
+          .status(401)
+          .json({ error: "No authorization header provided" });
+      }
+
+      let token = authHeader;
+      if (authHeader.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+      }
+
+      const userId = verifyToken(token);
+
+      if (!userId) {
+        return res.status(401).json({ error: "Invalid token" });
+      }
+
+      return res.json({
+        success: true,
+        userId,
+        token, // Return the same token for use in WebSocket connection
+      });
+    }
   );
 
   app.get("/ping", (_, res) => {
