@@ -173,16 +173,18 @@ export class PostRepository {
     authorId,
     communityId,
     media,
+    video,
   }: {
     title: string;
     content: string;
     authorId: number;
     communityId: number;
     media?: string[];
+    video?: string;
   }) {
     return await db
       .insert(posts)
-      .values({ title, content, authorId, communityId, media })
+      .values({ title, content, authorId, communityId, media, video })
       .returning();
   }
 

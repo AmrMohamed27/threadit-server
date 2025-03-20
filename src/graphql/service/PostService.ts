@@ -377,12 +377,14 @@ export class PostService {
     communityId,
     authorId,
     media,
+    video,
   }: {
     title: string;
     content: string;
     communityId: number;
     authorId?: number;
     media?: string[];
+    video?: string;
   }): Promise<PostResponse> {
     // Check if user is logged in
     if (!authorId) {
@@ -401,6 +403,7 @@ export class PostService {
       authorId,
       communityId,
       media,
+      video,
     });
     // handle creation error
     if (!newPost || newPost.length === 0) {

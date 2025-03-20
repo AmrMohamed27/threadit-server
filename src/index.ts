@@ -107,7 +107,6 @@ export async function startServer() {
     expressMiddleware(server, {
       context: async ({ req, res }): Promise<MyContext> => {
         const authHeader = req.headers.authorization;
-        console.log("Auth Header: ", authHeader);
         let userId;
 
         if (authHeader?.startsWith("Bearer ")) {
