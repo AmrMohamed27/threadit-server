@@ -43,6 +43,18 @@ function startServer() {
             server: httpServer,
             path: "/graphql",
         });
+        const verifyToken = (token) => {
+            try {
+                if (!token)
+                    return;
+                const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
+                return decoded.userId;
+            }
+            catch (err) {
+                console.error("Invalid token:", err);
+                return;
+            }
+        };
         const serverCleanup = (0, ws_2.useServer)({
             schema,
             context: (ctx) => __awaiter(this, void 0, void 0, function* () {
@@ -51,13 +63,7 @@ function startServer() {
                 const authHeader = (_a = ctx.connectionParams) === null || _a === void 0 ? void 0 : _a.Authorization;
                 if (authHeader === null || authHeader === void 0 ? void 0 : authHeader.startsWith("Bearer ")) {
                     const token = authHeader.split(" ")[1];
-                    try {
-                        const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
-                        userId = decoded.userId;
-                    }
-                    catch (err) {
-                        console.error("Invalid WebSocket token:", err);
-                    }
+                    userId = verifyToken(token);
                 }
                 return {
                     userId,
@@ -105,13 +111,7 @@ function startServer() {
                 let userId;
                 if (authHeader === null || authHeader === void 0 ? void 0 : authHeader.startsWith("Bearer ")) {
                     const token = authHeader.split(" ")[1];
-                    try {
-                        const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
-                        userId = decoded.userId;
-                    }
-                    catch (error) {
-                        console.error("Invalid JWT:", error);
-                    }
+                    userId = verifyToken(token);
                 }
                 return {
                     userId,
@@ -124,6 +124,35 @@ function startServer() {
                 };
             }),
         }));
+        app.get("/api/ws-auth", (0, cors_1.default)({
+            origin: [
+                env_1.env.CORS_ORIGIN_FRONTEND,
+                env_1.env.CORS_ORIGIN_BACKEND,
+                env_1.env.CORS_ORIGIN_PROXY,
+                "http://localhost:3000",
+            ],
+            credentials: true,
+        }), (req, res) => {
+            const authHeader = req.headers.authorization;
+            if (!authHeader) {
+                return res
+                    .status(401)
+                    .json({ error: "No authorization header provided" });
+            }
+            let token = authHeader;
+            if (authHeader.startsWith("Bearer ")) {
+                token = authHeader.split(" ")[1];
+            }
+            const userId = verifyToken(token);
+            if (!userId) {
+                return res.status(401).json({ error: "Invalid token" });
+            }
+            return res.json({
+                success: true,
+                userId,
+                token,
+            });
+        });
         app.get("/ping", (_, res) => {
             res.status(200).send("OK");
         });

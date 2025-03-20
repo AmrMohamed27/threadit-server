@@ -60,6 +60,7 @@ let ChatResolver = class ChatResolver {
     createChat(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
             const { name, image, isGroupChat, participantIds } = options;
+            console.log("Participant Ids: ", participantIds);
             const creatorId = ctx.userId;
             let result;
             if (isGroupChat === true) {
@@ -144,8 +145,10 @@ let ChatResolver = class ChatResolver {
     newChat(response, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const userId = ctx.userId;
+            console.log("Response; ", response.chat);
             if (userId && response.chat) {
                 if (response.chat.creatorId === userId) {
+                    console.log("Creator: ", userId);
                     return response;
                 }
                 const result = yield ctx.Services.chats.checkChatParticipant({
@@ -153,10 +156,15 @@ let ChatResolver = class ChatResolver {
                     chatId: response.chat.id,
                 });
                 if (result.success) {
+                    console.log("Participant: ", userId);
                     return response;
                 }
-                return null;
+                else {
+                    console.log("No Participant: ", userId);
+                    return null;
+                }
             }
+            console.log("No UserId: ", userId);
             return response;
         });
     }
@@ -256,6 +264,7 @@ __decorate([
 __decorate([
     (0, type_graphql_1.Subscription)(() => inputs_1.ChatResponse, {
         subscribe: () => pubsub_1.redisRealPubSub.asyncIterator([pubsub_1.SubscriptionTopics.NEW_CHAT]),
+        nullable: true,
     }),
     __param(0, (0, type_graphql_1.Root)()),
     __param(1, (0, type_graphql_1.Ctx)()),

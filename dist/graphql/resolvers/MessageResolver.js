@@ -71,6 +71,7 @@ let MessageResolver = class MessageResolver {
     newMessage(response, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const userId = ctx.userId;
+            console.log(userId);
             if (userId && response.message) {
                 if (response.message.senderId === userId) {
                     return response;
@@ -85,7 +86,7 @@ let MessageResolver = class MessageResolver {
                 }
                 return null;
             }
-            return response;
+            return null;
         });
     }
 };
