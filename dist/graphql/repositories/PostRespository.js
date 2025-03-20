@@ -108,10 +108,10 @@ class PostRepository {
         });
     }
     static insertPost(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ title, content, authorId, communityId, media, }) {
+        return __awaiter(this, arguments, void 0, function* ({ title, content, authorId, communityId, media, video, }) {
             return yield db_1.db
                 .insert(schema_1.posts)
-                .values({ title, content, authorId, communityId, media })
+                .values({ title, content, authorId, communityId, media, video })
                 .returning();
         });
     }

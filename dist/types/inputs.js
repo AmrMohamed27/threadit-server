@@ -166,6 +166,10 @@ __decorate([
     (0, type_graphql_1.Field)(() => [String], { nullable: true }),
     __metadata("design:type", Array)
 ], CreatePostInput.prototype, "media", void 0);
+__decorate([
+    (0, type_graphql_1.Field)(() => String, { nullable: true }),
+    __metadata("design:type", String)
+], CreatePostInput.prototype, "video", void 0);
 exports.CreatePostInput = CreatePostInput = __decorate([
     (0, type_graphql_1.InputType)()
 ], CreatePostInput);

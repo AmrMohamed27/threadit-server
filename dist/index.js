@@ -102,7 +102,6 @@ function startServer() {
         }), (0, body_parser_1.json)(), (0, express4_1.expressMiddleware)(server, {
             context: (_a) => __awaiter(this, [_a], void 0, function* ({ req, res }) {
                 const authHeader = req.headers.authorization;
-                console.log("Auth Header: ", authHeader);
                 let userId;
                 if (authHeader === null || authHeader === void 0 ? void 0 : authHeader.startsWith("Bearer ")) {
                     const token = authHeader.split(" ")[1];

@@ -239,7 +239,7 @@ class PostService {
         });
     }
     createPost(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ title, content, communityId, authorId, media, }) {
+        return __awaiter(this, arguments, void 0, function* ({ title, content, communityId, authorId, media, video, }) {
             if (!authorId) {
                 return {
                     errors: [
@@ -256,6 +256,7 @@ class PostService {
                 authorId,
                 communityId,
                 media,
+                video,
             });
             if (!newPost || newPost.length === 0) {
                 return {

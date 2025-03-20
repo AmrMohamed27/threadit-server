@@ -125,7 +125,7 @@ let PostResolver = class PostResolver {
     }
     createPost(ctx, options) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { title, content, communityId, media } = options;
+            const { title, content, communityId, media, video } = options;
             const authorId = ctx.userId;
             return yield ctx.Services.posts.createPost({
                 title,
@@ -133,6 +133,7 @@ let PostResolver = class PostResolver {
                 communityId,
                 authorId,
                 media,
+                video,
             });
         });
     }
